@@ -4,17 +4,18 @@ import DashboardPage from "./pages/DashboardPage";
 
 export default function App() {
   const [authenticated, setAuthenticated] =
-      useState(
-            !!localStorage.getItem("accessToken")
-                );
+    useState(
+      !!localStorage.getItem("accessToken")
+    );
 
-                  return authenticated ? (
-                      <DashboardPage />
-                        ) : (
-                            <LoginPage
-                                  onLogin={() =>
-                                          setAuthenticated(true)
-                                                }
-                                                    />
-                                                      );
-                                                      }
+  return authenticated ? (
+    <DashboardPage />
+  ) :
+    (
+      <LoginPage
+        onLogin={() =>
+          setAuthenticated(true)
+        }
+      />
+    );
+}
