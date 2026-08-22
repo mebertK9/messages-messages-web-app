@@ -1,0 +1,764 @@
+openapi: 3.0.3
+info:
+  title: Household Wishlist API
+  description: >
+    REST API for managing household purchase wishes, shop-assignment of products,
+    and shopping trips. Any user can act as wish creator, buyer, or shop manager -
+    these are actions, not fixed roles.
+  version: 0.1.0
+
+servers:
+  - url: https://api.example.onrender.com/v1
+    description: Production (render.com)
+  - url: http://localhost:3000/v1
+    description: Local development
+
+tags:
+  - name: auth
+  - name: users
+  - name: shops
+  - name: products
+  - name: wishes
+  - name: trips
+  - name: notifications
+
+paths:
+  # ---------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Register a new user with email and self-chosen password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created, returns access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful, returns access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ---------------------------------------------------------------------
+  # Users
+  # ---------------------------------------------------------------------
+  /users/me:
+    get:
+      tags: [users]
+      summary: Get the currently authenticated user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ---------------------------------------------------------------------
+  # Shops
+  # ---------------------------------------------------------------------
+  /shops:
+    get:
+      tags: [shops]
+      summary: List all shops
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of shops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Shop'
+
+  # ---------------------------------------------------------------------
+  # Categories
+  # ---------------------------------------------------------------------
+  /categories:
+    get:
+      tags: [categories]
+      summary: List all categories
+      description: >
+        Static-for-the-MVP master data (e.g. Food/Drink, Sweets/Snacks,
+        Luxury/Special, Hygiene) used to group products in the client's
+        category grid. Maintained directly in the database for the MVP -
+        no write endpoints yet.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of categories, ordered by sortOrder
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  # ---------------------------------------------------------------------
+  # Products (master data, shop-manager maintained)
+  # ---------------------------------------------------------------------
+  /products:
+    get:
+      tags: [products]
+      summary: List products
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: unassigned
+          in: query
+          description: If true, only return products without a preferred shop
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+
+    post:
+      tags: [products]
+      summary: Create a new product (master data entry)
+      description: >
+        Used when a wish is raised for an article that does not exist yet.
+        The product is created without a preferred shop until a shop manager
+        assigns one.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /products/{productId}:
+    patch:
+      tags: [products]
+      summary: Assign or change the preferred shop for a product
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+
+  # ---------------------------------------------------------------------
+  # Wishes
+  # ---------------------------------------------------------------------
+  /wishes:
+    get:
+      tags: [wishes]
+      summary: List wishes
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/WishStatus'
+        - name: createdById
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: shopId
+          in: query
+          description: >
+            Filter to wishes whose product's preferred shop matches this shop.
+            Used by the client to build the trip staging view per shop click.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of wishes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Wish'
+
+    post:
+      tags: [wishes]
+      summary: Create a wish for an existing product
+      description: >
+        Requires an existing productId. If the product does not exist yet,
+        create it first via POST /products.
+
+        If a trip is currently active and one of its stops' shop matches
+        this product's preferredShopId, the wish is created directly with
+        status onTrip and assigned to that stop - no action needed from
+        the buyer. A wishOnTrip notification is sent to the creator as
+        usual, and a wishAddedToActiveTrip notification is sent to the
+        buyer, purely informational; if it's missed, the wish simply
+        stays off that trip and waits for the next one.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWishRequest'
+      responses:
+        '201':
+          description: Wish created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wish'
+        '404':
+          description: Product not found
+
+  /wishes/{wishId}:
+    delete:
+      tags: [wishes]
+      summary: Retract a wish
+      description: >
+        Only the creator may retract their own wish. Allowed at any time,
+        regardless of current status (open or onTrip). Sets status to cancelled.
+        If the wish was onTrip, triggers a wishRetracted notification to the
+        active buyer.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/WishId'
+      responses:
+        '204':
+          description: Wish retracted
+        '403':
+          description: Not the creator of this wish
+        '404':
+          description: Wish not found
+
+  # ---------------------------------------------------------------------
+  # Shopping trips
+  # ---------------------------------------------------------------------
+  /trips:
+    get:
+      tags: [trips]
+      summary: List shopping trips
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TripStatus'
+      responses:
+        '200':
+          description: List of trips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShoppingTrip'
+
+    post:
+      tags: [trips]
+      summary: Start a new shopping trip
+      description: >
+        Committed only once, when the user taps "let's go" after staging
+        the trip client-side (clicking shops, reviewing and reassigning
+        wishes via GET /wishes?shopId=...). Creates the trip together with
+        one stop per given shop and assigns the given wishes to their
+        stops in a single atomic call. Each assigned wish is set to onTrip
+        and triggers a wishOnTrip notification to its creator. Nothing is
+        persisted before this call - the staging phase is read-only.
+
+        Assumes at most one active trip at a time; concurrent trips are
+        out of scope for the MVP and are not guarded against.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTripRequest'
+      responses:
+        '201':
+          description: Trip created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingTripDetail'
+
+  /trips/{tripId}:
+    get:
+      tags: [trips]
+      summary: Get a trip including its stops and assigned wishes
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TripId'
+      responses:
+        '200':
+          description: Trip details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingTripDetail'
+        '404':
+          description: Trip not found
+
+  /trips/{tripId}/stops/{stopId}/wishes:
+    post:
+      tags: [trips]
+      summary: Manually assign an open wish to this stop
+      description: >
+        Used e.g. when a wish's preferred shop differs from this stop's shop,
+        but the buyer wants to pick it up here anyway.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TripId'
+        - $ref: '#/components/parameters/StopId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [wishId]
+              properties:
+                wishId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Wish assigned to stop
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wish'
+        '404':
+          description: Trip, stop, or wish not found
+
+  /trips/{tripId}/stops/{stopId}/complete:
+    post:
+      tags: [trips]
+      summary: Complete a stop
+      description: >
+        Marks the stop as done. All wishes currently assigned to this stop
+        are set to purchased, except those listed in notFoundWishIds, which
+        are set back to open and trigger a wishNotFound notification to
+        their creator. When all stops of a trip are done, the trip itself
+        is marked done.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TripId'
+        - $ref: '#/components/parameters/StopId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notFoundWishIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Stop completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripStop'
+        '404':
+          description: Trip or stop not found
+
+  # ---------------------------------------------------------------------
+  # Notifications
+  # ---------------------------------------------------------------------
+  /notifications:
+    get:
+      tags: [notifications]
+      summary: List notifications for the current user
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: unread
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+
+  /notifications/{notificationId}:
+    patch:
+      tags: [notifications]
+      summary: Mark a notification as read
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [read]
+              properties:
+                read:
+                  type: boolean
+      responses:
+        '200':
+          description: Notification updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '404':
+          description: Notification not found
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WishId:
+      name: wishId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TripId:
+      name: tripId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    StopId:
+      name: stopId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    Shop:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sortOrder:
+          type: integer
+          description: Display order in the client's category grid.
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        preferredShopId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+
+    CreateProductRequest:
+      type: object
+      required: [name, categoryId]
+      properties:
+        name:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+
+    UpdateProductRequest:
+      type: object
+      required: [preferredShopId]
+      properties:
+        preferredShopId:
+          type: string
+          format: uuid
+
+    WishStatus:
+      type: string
+      enum: [open, onTrip, purchased, cancelled]
+
+    Wish:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        createdById:
+          type: string
+          format: uuid
+        assignedTripStopId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: '#/components/schemas/WishStatus'
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateWishRequest:
+      type: object
+      required: [productId]
+      properties:
+        productId:
+          type: string
+          format: uuid
+
+    TripStatus:
+      type: string
+      enum: [active, done]
+
+    StopStatus:
+      type: string
+      enum: [active, done]
+
+    TripStop:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tripId:
+          type: string
+          format: uuid
+        shopId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/StopStatus'
+
+    ShoppingTrip:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        startedById:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/TripStatus'
+        startedAt:
+          type: string
+          format: date-time
+
+    ShoppingTripDetail:
+      allOf:
+        - $ref: '#/components/schemas/ShoppingTrip'
+        - type: object
+          properties:
+            stops:
+              type: array
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/TripStop'
+                  - type: object
+                    properties:
+                      wishes:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Wish'
+
+    CreateTripRequest:
+      type: object
+      required: [stops]
+      properties:
+        stops:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateTripStopRequest'
+
+    CreateTripStopRequest:
+      type: object
+      required: [shopId]
+      properties:
+        shopId:
+          type: string
+          format: uuid
+        wishIds:
+          type: array
+          description: Wishes staged for this stop, as decided by the client.
+          items:
+            type: string
+            format: uuid
+          default: []
+
+    NotificationType:
+      type: string
+      enum: [wishOnTrip, wishRetracted, wishNotFound, wishAddedToActiveTrip]
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        wishId:
+          type: string
+          format: uuid
+        recipientId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
