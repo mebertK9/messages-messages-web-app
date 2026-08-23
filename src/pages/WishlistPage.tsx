@@ -73,6 +73,8 @@ function groupItemsByProduct(items: WishItem[]): ProductGroup[] {
 function formatWishLine(group: ProductGroup): string {
   return group.count > 1 ? `${group.count}x ${group.product.name}` : group.product.name;
 }
+
+export default function WishlistPage({ shops, onBack, onStartShopTrip }: Props) {
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
