@@ -18,6 +18,12 @@ export default function CategoryPage({ category, onBack }: Props) {
   const [newProductName, setNewProductName] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Set on login (see LoginPage); used to tell "my" wishes apart from the
+  // household's, since only the creator of a wish may retract it.
+  const currentUserId = JSON.parse(
+    localStorage.getItem("currentUser") ?? "{}"
+  ).id as string | undefined;
+
   useEffect(() => {
     async function load() {
       try {
@@ -41,6 +47,12 @@ export default function CategoryPage({ category, onBack }: Props) {
     return openWishes.filter((wish) => wish.productId === productId).length;
   }
 
+  function ownWishFor(productId: string): Wish | undefined {
+    return openWishes.find(
+      (wish) => wish.productId === productId && wish.createdById === currentUserId
+    );
+  }
+
   async function handleIncrement(product: Product) {
     try {
       const wish = await createWish(product.id);
@@ -51,9 +63,7 @@ export default function CategoryPage({ category, onBack }: Props) {
   }
 
   async function handleDecrement(product: Product) {
-    const wishToRetract = openWishes.find(
-      (wish) => wish.productId === product.id
-    );
+    const wishToRetract = ownWishFor(product.id);
     if (!wishToRetract) return;
 
     try {
@@ -103,11 +113,12 @@ export default function CategoryPage({ category, onBack }: Props) {
           <div className="product-list">
             {products.map((product) => {
               const count = countFor(product.id);
+              const hasOwnWish = !!ownWishFor(product.id);
               return (
                 <div key={product.id} className="product-item">
                   <span>{product.name}</span>
                   <span className="product-controls">
-                    {count > 0 && (
+                    {hasOwnWish && (
                       <button
                         className="qty-button"
                         onClick={() => handleDecrement(product)}
