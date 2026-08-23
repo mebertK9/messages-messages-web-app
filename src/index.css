@@ -71,6 +71,7 @@ button {
 }
 
 .tile {
+  position: relative;
   border: none;
   border-radius: 12px;
   background: white;
@@ -85,6 +86,23 @@ button {
 
 .tile:active {
   background: #f3f4f6;
+}
+
+.tile-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #b91c1c;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ---- Category screen ---- */
