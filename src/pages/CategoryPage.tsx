@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { listProductsByCategory, createProduct } from "../services/products";
-import { createWish } from "../services/wishes";
+import { createWish, listOpenWishes } from "../services/wishes";
+import { countWishesByProduct } from "../utils/wishCounts";
 import { Category, Product } from "../types/domain";
 
 interface Props {
@@ -10,9 +11,9 @@ interface Props {
 
 export default function CategoryPage({ category, onBack }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [wishCounts, setWishCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [justWishedId, setJustWishedId] = useState<string | null>(null);
 
   const [addingNew, setAddingNew] = useState(false);
   const [newProductName, setNewProductName] = useState("");
@@ -21,7 +22,12 @@ export default function CategoryPage({ category, onBack }: Props) {
   useEffect(() => {
     async function load() {
       try {
-        setProducts(await listProductsByCategory(category.id));
+        const [productsResult, openWishes] = await Promise.all([
+          listProductsByCategory(category.id),
+          listOpenWishes()
+        ]);
+        setProducts(productsResult);
+        setWishCounts(countWishesByProduct(openWishes));
       } catch {
         setError("Artikel konnten nicht geladen werden");
       } finally {
@@ -32,11 +38,18 @@ export default function CategoryPage({ category, onBack }: Props) {
     load();
   }, [category.id]);
 
+  function bumpWishCount(productId: string) {
+    setWishCounts((current) => {
+      const next = new Map(current);
+      next.set(productId, (next.get(productId) ?? 0) + 1);
+      return next;
+    });
+  }
+
   async function handleWish(product: Product) {
     try {
       await createWish(product.id);
-      setJustWishedId(product.id);
-      setTimeout(() => setJustWishedId(null), 1500);
+      bumpWishCount(product.id);
     } catch {
       setError("Wunsch konnte nicht angelegt werden");
     }
@@ -51,8 +64,7 @@ export default function CategoryPage({ category, onBack }: Props) {
       const product = await createProduct(newProductName.trim(), category.id);
       setProducts((current) => [product, ...current]);
       await createWish(product.id);
-      setJustWishedId(product.id);
-      setTimeout(() => setJustWishedId(null), 1500);
+      bumpWishCount(product.id);
       setNewProductName("");
       setAddingNew(false);
     } catch {
@@ -78,18 +90,23 @@ export default function CategoryPage({ category, onBack }: Props) {
           <p>Lädt...</p>
         ) : (
           <div className="product-list">
-            {products.map((product) => (
-              <button
-                key={product.id}
-                className="product-item"
-                onClick={() => handleWish(product)}
-              >
-                {product.name}
-                {justWishedId === product.id && (
-                  <span className="wish-confirmed">✓ auf der Liste</span>
-                )}
-              </button>
-            ))}
+            {products.map((product) => {
+              const count = wishCounts.get(product.id) ?? 0;
+              return (
+                <button
+                  key={product.id}
+                  className="product-item"
+                  onClick={() => handleWish(product)}
+                >
+                  {product.name}
+                  {count > 0 && (
+                    <span className="wish-confirmed">
+                      auf der Liste ({count}×)
+                    </span>
+                  )}
+                </button>
+              );
+            })}
 
             {addingNew ? (
               <form className="new-product-form" onSubmit={handleCreateProduct}>
