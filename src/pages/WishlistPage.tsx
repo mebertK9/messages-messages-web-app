@@ -50,7 +50,29 @@ function groupByShop(
   return { noShopItems, shopGroups };
 }
 
-export default function WishlistPage({ shops, onBack, onStartShopTrip }: Props) {
+interface ProductGroup {
+  product: Product;
+  count: number;
+}
+
+function groupItemsByProduct(items: WishItem[]): ProductGroup[] {
+  const countByProductId = new Map<string, ProductGroup>();
+
+  for (const { product } of items) {
+    const existing = countByProductId.get(product.id);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      countByProductId.set(product.id, { product, count: 1 });
+    }
+  }
+
+  return Array.from(countByProductId.values());
+}
+
+function formatWishLine(group: ProductGroup): string {
+  return group.count > 1 ? `${group.count}x ${group.product.name}` : group.product.name;
+}
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,16 +135,16 @@ export default function WishlistPage({ shops, onBack, onStartShopTrip }: Props) 
         <section className="wishlist-section">
           <h2 className="wishlist-section-title">Ohne Shop</h2>
           <ul className="no-shop-list">
-            {noShopItems.map(({ wish, product }) => (
-              <li key={wish.id} className="no-shop-row">
-                <span>{product.name}</span>
+            {groupItemsByProduct(noShopItems).map((group) => (
+              <li key={group.product.id} className="no-shop-row">
+                <span>{formatWishLine(group)}</span>
                 <span className="shop-mini-buttons">
                   {shops.map((shop) => (
                     <button
                       key={shop.id}
                       className="shop-mini-button"
                       title={shop.name}
-                      onClick={() => handleAssignShop(product.id, shop)}
+                      onClick={() => handleAssignShop(group.product.id, shop)}
                     >
                       {shop.name.charAt(0)}
                     </button>
@@ -137,8 +159,8 @@ export default function WishlistPage({ shops, onBack, onStartShopTrip }: Props) 
       {shopGroups.map(({ shop, items }) => (
         <section key={shop.id} className="wishlist-shop-block">
           <ul className="wishlist-shop-items">
-            {items.map(({ wish, product }) => (
-              <li key={wish.id}>{product.name}</li>
+            {groupItemsByProduct(items).map((group) => (
+              <li key={group.product.id}>{formatWishLine(group)}</li>
             ))}
           </ul>
           <button
