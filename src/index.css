@@ -147,17 +147,37 @@ button {
   border-radius: 8px;
   padding: 12px;
   background: white;
-  cursor: pointer;
   font-size: 15px;
 }
 
-.product-item:active {
+.product-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qty-button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 0;
+  line-height: 1;
+}
+
+.qty-button:active {
   background: #f3f4f6;
 }
 
-.wish-confirmed {
+.qty-count {
   color: #15803d;
   font-size: 13px;
+  min-width: 32px;
+  text-align: center;
 }
 
 .add-product-button {
