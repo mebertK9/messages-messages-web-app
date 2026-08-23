@@ -11,3 +11,9 @@ export async function createWish(productId: string): Promise<Wish> {
     body: JSON.stringify({ productId })
   });
 }
+
+export async function retractWish(wishId: string): Promise<void> {
+  return apiFetch<void>(`/wishes/${wishId}`, {
+    method: "DELETE"
+  });
+}
