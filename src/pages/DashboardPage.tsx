@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
 import { listShops } from "../services/shops";
 import { listCategories } from "../services/categories";
+import { listOpenWishes } from "../services/wishes";
 import { Shop, Category } from "../types/domain";
 import CategoryPage from "./CategoryPage";
+import WishlistPage from "./WishlistPage";
 
 type View =
   | { type: "home" }
   | { type: "category"; category: Category }
+  | { type: "wishlist" }
   | { type: "shopStub"; shop: Shop };
 
 export default function DashboardPage() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [wishCount, setWishCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [view, setView] = useState<View>({ type: "home" });
@@ -19,12 +23,14 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [shopsResult, categoriesResult] = await Promise.all([
+        const [shopsResult, categoriesResult, openWishes] = await Promise.all([
           listShops(),
-          listCategories()
+          listCategories(),
+          listOpenWishes()
         ]);
         setShops(shopsResult);
         setCategories(categoriesResult);
+        setWishCount(openWishes.length);
       } catch {
         setError("Daten konnten nicht geladen werden");
       } finally {
@@ -35,11 +41,29 @@ export default function DashboardPage() {
     load();
   }, []);
 
+  async function goHome() {
+    setView({ type: "home" });
+    try {
+      setWishCount((await listOpenWishes()).length);
+    } catch {
+      // Stale count is a minor issue; keep the old value rather than erroring out.
+    }
+  }
+  if (view.type === "wishlist") {
+    return (
+      <WishlistPage
+        shops={shops}
+        onBack={goHome}
+        onStartShopTrip={(shop) => setView({ type: "shopStub", shop })}
+      />
+    );
+  }
+
   if (view.type === "category") {
     return (
       <CategoryPage
         category={view.category}
-        onBack={() => setView({ type: "home" })}
+        onBack={goHome}
       />
     );
   }
@@ -74,6 +98,10 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard">
+      <button className="wish-count-line" onClick={() => setView({ type: "wishlist" })}>
+        {wishCount} {wishCount === 1 ? "Wunsch" : "Wünsche"}
+      </button>
+
       <section className="tile-grid">
         <h2 className="tile-grid-title">Einkauf starten</h2>
         <div className="tile-grid-squares">
