@@ -1,8 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { listProductsByCategory, createProduct } from "../services/products";
-import { createWish, listOpenWishes } from "../services/wishes";
-import { countWishesByProduct } from "../utils/wishCounts";
-import { Category, Product } from "../types/domain";
+import { createWish, retractWish, listOpenWishes } from "../services/wishes";
+import { Category, Product, Wish } from "../types/domain";
 
 interface Props {
   category: Category;
@@ -11,7 +10,7 @@ interface Props {
 
 export default function CategoryPage({ category, onBack }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [wishCounts, setWishCounts] = useState<Map<string, number>>(new Map());
+  const [openWishes, setOpenWishes] = useState<Wish[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -22,12 +21,12 @@ export default function CategoryPage({ category, onBack }: Props) {
   useEffect(() => {
     async function load() {
       try {
-        const [productsResult, openWishes] = await Promise.all([
+        const [productsResult, wishesResult] = await Promise.all([
           listProductsByCategory(category.id),
           listOpenWishes()
         ]);
         setProducts(productsResult);
-        setWishCounts(countWishesByProduct(openWishes));
+        setOpenWishes(wishesResult);
       } catch {
         setError("Artikel konnten nicht geladen werden");
       } finally {
@@ -38,20 +37,32 @@ export default function CategoryPage({ category, onBack }: Props) {
     load();
   }, [category.id]);
 
-  function bumpWishCount(productId: string) {
-    setWishCounts((current) => {
-      const next = new Map(current);
-      next.set(productId, (next.get(productId) ?? 0) + 1);
-      return next;
-    });
+  function countFor(productId: string): number {
+    return openWishes.filter((wish) => wish.productId === productId).length;
   }
 
-  async function handleWish(product: Product) {
+  async function handleIncrement(product: Product) {
     try {
-      await createWish(product.id);
-      bumpWishCount(product.id);
+      const wish = await createWish(product.id);
+      setOpenWishes((current) => [...current, wish]);
     } catch {
       setError("Wunsch konnte nicht angelegt werden");
+    }
+  }
+
+  async function handleDecrement(product: Product) {
+    const wishToRetract = openWishes.find(
+      (wish) => wish.productId === product.id
+    );
+    if (!wishToRetract) return;
+
+    try {
+      await retractWish(wishToRetract.id);
+      setOpenWishes((current) =>
+        current.filter((wish) => wish.id !== wishToRetract.id)
+      );
+    } catch {
+      setError("Wunsch konnte nicht zurückgezogen werden");
     }
   }
 
@@ -63,8 +74,8 @@ export default function CategoryPage({ category, onBack }: Props) {
     try {
       const product = await createProduct(newProductName.trim(), category.id);
       setProducts((current) => [product, ...current]);
-      await createWish(product.id);
-      bumpWishCount(product.id);
+      const wish = await createWish(product.id);
+      setOpenWishes((current) => [...current, wish]);
       setNewProductName("");
       setAddingNew(false);
     } catch {
@@ -91,20 +102,30 @@ export default function CategoryPage({ category, onBack }: Props) {
         ) : (
           <div className="product-list">
             {products.map((product) => {
-              const count = wishCounts.get(product.id) ?? 0;
+              const count = countFor(product.id);
               return (
-                <button
-                  key={product.id}
-                  className="product-item"
-                  onClick={() => handleWish(product)}
-                >
-                  {product.name}
-                  {count > 0 && (
-                    <span className="wish-confirmed">
-                      auf der Liste ({count}×)
-                    </span>
-                  )}
-                </button>
+                <div key={product.id} className="product-item">
+                  <span>{product.name}</span>
+                  <span className="product-controls">
+                    {count > 0 && (
+                      <button
+                        className="qty-button"
+                        onClick={() => handleDecrement(product)}
+                      >
+                        −
+                      </button>
+                    )}
+                    {count > 0 && (
+                      <span className="qty-count">({count}×)</span>
+                    )}
+                    <button
+                      className="qty-button"
+                      onClick={() => handleIncrement(product)}
+                    >
+                      +
+                    </button>
+                  </span>
+                </div>
               );
             })}
 
