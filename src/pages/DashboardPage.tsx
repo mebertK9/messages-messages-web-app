@@ -135,7 +135,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="tile-grid">
-        <h2 className="tile-grid-title">Wunsch registrieren</h2>
+        <h2 className="tile-grid-title">Wunsch aufschreiben</h2>
         <div className="tile-grid-squares">
           {categories.slice(0, 4).map((category) => {
             const count = categoryWishCounts.get(category.id) ?? 0;
