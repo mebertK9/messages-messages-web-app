@@ -306,3 +306,155 @@ button {
   font-weight: 600;
   font-size: 13px;
 }
+/* ---- Trip staging screen ---- */
+
+.trip-staging {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.trip-staging-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trip-staging-header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.trip-staging-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trip-staging-section-title {
+  margin: 0;
+  font-size: 15px;
+  color: #6b7280;
+}
+
+.trip-stop-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trip-stop-column {
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trip-stop-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trip-stop-column-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.trip-stop-remove-button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 4px;
+}
+
+.trip-stop-remove-button:active {
+  color: #b91c1c;
+}
+
+.trip-stop-empty {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.trip-stop-wish-list,
+.excluded-wish-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wish-group-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 15px;
+}
+
+.excluded-wish-list .wish-group-row {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.wish-group-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.exclude-button {
+  color: #b91c1c;
+}
+
+.add-shop-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.add-shop-chip {
+  border: 1px dashed #ccc;
+  border-radius: 999px;
+  background: none;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+}
+
+.add-shop-chip:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.commit-trip-button {
+  margin-top: 8px;
+  background: #15803d;
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.commit-trip-button:disabled {
+  background: #9ca3af;
+  cursor: default;
+}
+
+.trip-stub-id {
+  color: #9ca3af;
+  font-size: 13px;
+}

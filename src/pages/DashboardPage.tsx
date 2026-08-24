@@ -5,14 +5,18 @@ import { listOpenWishes } from "../services/wishes";
 import { listAllProducts } from "../services/products";
 import { countWishesByShop, countWishesByCategory } from "../utils/wishCounts";
 import { Shop, Category, Wish, Product } from "../types/domain";
+import { ShoppingTripDetail } from "../types/trip";
 import CategoryPage from "./CategoryPage";
 import WishlistPage from "./WishlistPage";
+import TripStagingPage from "./TripStagingPage";
+import ActiveTripPage from "./ActiveTripPage";
 
 type View =
   | { type: "home" }
   | { type: "category"; category: Category }
   | { type: "wishlist" }
-  | { type: "shopStub"; shop: Shop };
+  | { type: "staging"; shop: Shop }
+  | { type: "activeTrip"; trip: ShoppingTripDetail };
 
 export default function DashboardPage() {
   const [shops, setShops] = useState<Shop[]>([]);
@@ -59,35 +63,33 @@ export default function DashboardPage() {
       // Stale counts are a minor issue; keep the old values rather than erroring out.
     }
   }
+
+  function startShopTrip(shop: Shop) {
+    setView({ type: "staging", shop });
+  }
+
   if (view.type === "wishlist") {
-    return (
-      <WishlistPage
-        shops={shops}
-        onBack={goHome}
-        onStartShopTrip={(shop) => setView({ type: "shopStub", shop })}
-      />
-    );
+    return <WishlistPage shops={shops} onBack={goHome} onStartShopTrip={startShopTrip} />;
   }
 
   if (view.type === "category") {
+    return <CategoryPage category={view.category} onBack={goHome} />;
+  }
+
+  if (view.type === "staging") {
     return (
-      <CategoryPage
-        category={view.category}
+      <TripStagingPage
+        shops={shops}
+        products={products}
+        initialShop={view.shop}
         onBack={goHome}
+        onTripStarted={(trip) => setView({ type: "activeTrip", trip })}
       />
     );
   }
 
-  if (view.type === "shopStub") {
-    return (
-      <div className="container">
-        <div className="card">
-          <h1>{view.shop.name}</h1>
-          <p>Der Einkaufs-Flow für diesen Laden folgt als Nächstes.</p>
-          <button onClick={() => setView({ type: "home" })}>Zurück</button>
-        </div>
-      </div>
-    );
+  if (view.type === "activeTrip") {
+    return <ActiveTripPage trip={view.trip} onBack={goHome} />;
   }
 
   if (loading) {
@@ -121,11 +123,7 @@ export default function DashboardPage() {
           {shops.slice(0, 4).map((shop) => {
             const count = shopWishCounts.get(shop.id) ?? 0;
             return (
-              <button
-                key={shop.id}
-                className="tile"
-                onClick={() => setView({ type: "shopStub", shop })}
-              >
+              <button key={shop.id} className="tile" onClick={() => startShopTrip(shop)}>
                 {shop.name}
                 {count > 0 && <span className="tile-badge">{count}</span>}
               </button>
