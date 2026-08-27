@@ -81,6 +81,7 @@ export default function DashboardPage() {
       <TripStagingPage
         shops={shops}
         products={products}
+        openWishes={openWishes}
         initialShop={view.shop}
         onBack={goHome}
         onTripStarted={(trip) => setView({ type: "activeTrip", trip })}

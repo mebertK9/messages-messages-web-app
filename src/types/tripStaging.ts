@@ -12,3 +12,8 @@ export interface TripStopDraft {
   shop: Shop;
   wishGroups: WishGroup[];
 }
+
+export interface ShopWishGroups {
+  shop: Shop;
+  wishGroups: WishGroup[];
+}
