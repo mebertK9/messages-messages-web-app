@@ -136,13 +136,13 @@ export default function TripStagingPage({
     <div className="trip-staging">
       <div className="trip-staging-header">
         <button className="back-button" onClick={onBack}>← Zurück</button>
-        <h1>Einkauf planen</h1>
+        <h1>Wünschen kannmansich viel...</h1>
       </div>
 
       {commitError && <div className="error">{commitError}</div>}
 
       <section className="trip-staging-section">
-        <h2 className="wishlist-section-title">Kaufe ich ein</h2>
+        <h2 className="wishlist-section-title">Yo, bring ich mit</h2>
         <div className="trip-stop-columns">
           {stops.map((stop) => (
             <TripStopColumn
