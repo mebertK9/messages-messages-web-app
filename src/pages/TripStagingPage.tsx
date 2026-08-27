@@ -136,7 +136,7 @@ export default function TripStagingPage({
     <div className="trip-staging">
       <div className="trip-staging-header">
         <button className="back-button" onClick={onBack}>← Zurück</button>
-        <h1>Einkauf planen</h1>
+        <h1>Wünschen kann man viel...</h1>
       </div>
 
       {commitError && <div className="error">{commitError}</div>}
