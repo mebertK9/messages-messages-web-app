@@ -1,50 +1,58 @@
-import { useEffect, useState } from "react";
-import { listOpenWishesForShop } from "../services/wishes";
+import { useState } from "react";
 import { createTrip } from "../services/trips";
-import { buildWishGroups } from "../utils/tripStaging";
-import { Product, Shop } from "../types/domain";
+import { buildWishGroups, groupByPreferredShop, totalWishCount } from "../utils/tripStaging";
+import { Product, Shop, Wish } from "../types/domain";
 import { CreateTripRequest, ShoppingTripDetail } from "../types/trip";
 import { TripStopDraft, WishGroup } from "../types/tripStaging";
 import TripStopColumn from "./TripStopColumn";
 import AddShopChip from "./AddShopChip";
-import WishGroupRow from "./WishGroupRow";
+import TripExcludedSection from "./TripExcludedSection";
 
 interface Props {
   shops: Shop[];
   products: Product[];
+  openWishes: Wish[];
   initialShop: Shop;
   onBack: () => void;
   onTripStarted: (trip: ShoppingTripDetail) => void;
 }
 
-export default function TripStagingPage({ shops, products, initialShop, onBack, onTripStarted }: Props) {
-  const [stops, setStops] = useState<TripStopDraft[]>([]);
-  const [excludedGroups, setExcludedGroups] = useState<WishGroup[]>([]);
-  const [loadingShopId, setLoadingShopId] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState("");
-  const [committing, setCommitting] = useState(false);
+export default function TripStagingPage({
+  shops,
+  products,
+  openWishes,
+  initialShop,
+  onBack,
+  onTripStarted
+}: Props) {
+  // Built once from data the dashboard already loaded - staging only reshuffles
+  // it client-side, so no extra request is needed for this screen.
+  const [allGroups] = useState<WishGroup[]>(() => buildWishGroups(openWishes, products));
+
+  const [stops, setStops] = useState<TripStopDraft[]>(() => [
+    {
+      shop: initialShop,
+      wishGroups: allGroups.filter((group) => group.product.preferredShopId === initialShop.id)
+    }
+  ]);
+
+  const [excludedGroups, setExcludedGroups] = useState<WishGroup[]>(() =>
+    allGroups.filter((group) => group.product.preferredShopId !== initialShop.id)
+  );
+
   const [commitError, setCommitError] = useState("");
+  const [committing, setCommitting] = useState(false);
 
-  useEffect(() => {
-    addShopAsStop(initialShop);
-    // Runs once on mount only - initialShop never changes for this screen instance.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function addShopAsStop(shop: Shop) {
+  function addShopAsStop(shop: Shop) {
     if (stops.some((stop) => stop.shop.id === shop.id)) return;
 
-    setLoadError("");
-    setLoadingShopId(shop.id);
-    try {
-      const wishes = await listOpenWishesForShop(shop.id);
-      const wishGroups = buildWishGroups(wishes, products);
-      setStops((current) => [...current, { shop, wishGroups }]);
-    } catch {
-      setLoadError(`Wünsche für ${shop.name} konnten nicht geladen werden.`);
-    } finally {
-      setLoadingShopId(null);
-    }
+    const groupsForShop = excludedGroups.filter(
+      (group) => group.product.preferredShopId === shop.id
+    );
+    setExcludedGroups((current) =>
+      current.filter((group) => group.product.preferredShopId !== shop.id)
+    );
+    setStops((current) => [...current, { shop, wishGroups: groupsForShop }]);
   }
 
   function removeStop(shopId: string) {
@@ -81,6 +89,25 @@ export default function TripStagingPage({ shops, products, initialShop, onBack, 
     }
   }
 
+  /** Bulk-adds every group of one shop from "Heute nicht" into that shop's
+   * stop, creating the stop if it doesn't exist yet. */
+  function addWholeShopGroup(shop: Shop, groups: WishGroup[]) {
+    setExcludedGroups((current) =>
+      current.filter((group) => !groups.some((g) => g.product.id === group.product.id))
+    );
+    setStops((current) => {
+      const existingStop = current.find((stop) => stop.shop.id === shop.id);
+      if (existingStop) {
+        return current.map((stop) =>
+          stop.shop.id === shop.id
+            ? { ...stop, wishGroups: [...stop.wishGroups, ...groups] }
+            : stop
+        );
+      }
+      return [...current, { shop, wishGroups: groups }];
+    });
+  }
+
   async function handleCommit() {
     setCommitError("");
     setCommitting(true);
@@ -102,7 +129,8 @@ export default function TripStagingPage({ shops, products, initialShop, onBack, 
   }
 
   const availableShops = shops.filter((shop) => !stops.some((stop) => stop.shop.id === shop.id));
-  const totalStaged = stops.reduce((sum, stop) => sum + stop.wishGroups.length, 0);
+  const totalStaged = stops.reduce((sum, stop) => sum + totalWishCount(stop.wishGroups), 0);
+  const { noShopGroups, shopGroups: excludedShopGroups } = groupByPreferredShop(excludedGroups, shops);
 
   return (
     <div className="trip-staging">
@@ -111,12 +139,10 @@ export default function TripStagingPage({ shops, products, initialShop, onBack, 
         <h1>Einkauf planen</h1>
       </div>
 
-      {loadError && <div className="error">{loadError}</div>}
       {commitError && <div className="error">{commitError}</div>}
-      {loadingShopId && <p>Lädt...</p>}
 
       <section className="trip-staging-section">
-        <h2 className="trip-staging-section-title">Kaufe ich ein</h2>
+        <h2 className="wishlist-section-title">Kaufe ich ein</h2>
         <div className="trip-stop-columns">
           {stops.map((stop) => (
             <TripStopColumn
@@ -131,41 +157,26 @@ export default function TripStagingPage({ shops, products, initialShop, onBack, 
 
         <div className="add-shop-chips">
           {availableShops.map((shop) => (
-            <AddShopChip
-              key={shop.id}
-              shop={shop}
-              loading={loadingShopId === shop.id}
-              onAdd={() => addShopAsStop(shop)}
-            />
+            <AddShopChip key={shop.id} shop={shop} onAdd={() => addShopAsStop(shop)} />
           ))}
         </div>
       </section>
-
-      {excludedGroups.length > 0 && (
-        <section className="trip-staging-section">
-          <h2 className="trip-staging-section-title">Heute nicht</h2>
-          <ul className="excluded-wish-list">
-            {excludedGroups.map((group) => (
-              <WishGroupRow
-                key={group.product.id}
-                group={group}
-                moveTargets={stops.map((stop) => ({
-                  shop: stop.shop,
-                  onSelect: () => moveGroup(group, stop.shop.id)
-                }))}
-              />
-            ))}
-          </ul>
-        </section>
-      )}
 
       <button
         className="commit-trip-button"
         disabled={stops.length === 0 || committing}
         onClick={handleCommit}
       >
-        {committing ? "Lädt..." : `Los geht's (${totalStaged} Artikel)`}
+        {committing ? "Lädt..." : `Los geht's (${totalStaged} Wünsche)`}
       </button>
+
+      <TripExcludedSection
+        noShopGroups={noShopGroups}
+        shopGroups={excludedShopGroups}
+        activeStopShops={stops.map((stop) => stop.shop)}
+        onAssignToStop={(group, shopId) => moveGroup(group, shopId)}
+        onAddWholeShopGroup={addWholeShopGroup}
+      />
     </div>
   );
 }

@@ -2,14 +2,13 @@ import { Shop } from "../types/domain";
 
 interface Props {
   shop: Shop;
-  loading: boolean;
   onAdd: () => void;
 }
 
-export default function AddShopChip({ shop, loading, onAdd }: Props) {
+export default function AddShopChip({ shop, onAdd }: Props) {
   return (
-    <button className="add-shop-chip" onClick={onAdd} disabled={loading}>
-      {loading ? "Lädt..." : `+ ${shop.name}`}
+    <button className="add-shop-chip" onClick={onAdd}>
+      + {shop.name}
     </button>
   );
 }
