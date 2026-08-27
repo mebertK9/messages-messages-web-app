@@ -305,7 +305,7 @@ button {
   cursor: pointer;
   font-weight: 600;
   font-size: 13px;
-}
+
 /* ---- Trip staging screen ---- */
 
 .trip-staging {
@@ -331,13 +331,7 @@ button {
 .trip-staging-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.trip-staging-section-title {
-  margin: 0;
-  font-size: 15px;
-  color: #6b7280;
+  gap: 8px;
 }
 
 .trip-stop-columns {
@@ -353,7 +347,7 @@ button {
   box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .trip-stop-column-header {
@@ -386,8 +380,7 @@ button {
   font-size: 14px;
 }
 
-.trip-stop-wish-list,
-.excluded-wish-list {
+.trip-stop-wish-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -404,11 +397,6 @@ button {
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 15px;
-}
-
-.excluded-wish-list .wish-group-row {
-  background: #f9fafb;
-  color: #6b7280;
 }
 
 .wish-group-controls {
@@ -436,13 +424,7 @@ button {
   color: #374151;
 }
 
-.add-shop-chip:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
 .commit-trip-button {
-  margin-top: 8px;
   background: #15803d;
   color: white;
   font-weight: 600;
