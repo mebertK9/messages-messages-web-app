@@ -1,24 +1,32 @@
 import { Shop } from "../types/domain";
-import { ShopWishGroups, WishGroup } from "../types/tripStaging";
-import { formatWishGroupLine } from "../utils/tripStaging";
+import { WishGroup } from "../types/tripStaging";
+import { groupByPreferredShop } from "../utils/tripStaging";
+import WishGroupRow from "./WishGroupRow";
 
 interface Props {
-  noShopGroups: WishGroup[];
-  shopGroups: ShopWishGroups[];
+  excludedGroups: WishGroup[];
+  shops: Shop[];
   activeStopShops: Shop[];
   onAssignToStop: (group: WishGroup, shopId: string) => void;
-  onAddWholeShopGroup: (shop: Shop, groups: WishGroup[]) => void;
 }
 
 export default function TripExcludedSection({
-  noShopGroups,
-  shopGroups,
+  excludedGroups,
+  shops,
   activeStopShops,
-  onAssignToStop,
-  onAddWholeShopGroup
+  onAssignToStop
 }: Props) {
-  if (noShopGroups.length === 0 && shopGroups.length === 0) {
+  if (excludedGroups.length === 0) {
     return null;
+  }
+
+  const { noShopGroups, shopGroups } = groupByPreferredShop(excludedGroups, shops);
+
+  function moveTargetsFor(group: WishGroup) {
+    return activeStopShops.map((shop) => ({
+      shop,
+      onSelect: () => onAssignToStop(group, shop.id)
+    }));
   }
 
   return (
@@ -26,38 +34,25 @@ export default function TripExcludedSection({
       <h2 className="wishlist-section-title">Heute nicht</h2>
 
       {noShopGroups.length > 0 && (
-        <ul className="no-shop-list">
-          {noShopGroups.map((group) => (
-            <li key={group.product.id} className="no-shop-row">
-              <span>{formatWishGroupLine(group)}</span>
-              <span className="shop-mini-buttons">
-                {activeStopShops.map((shop) => (
-                  <button
-                    key={shop.id}
-                    className="shop-mini-button"
-                    title={`Zu ${shop.name} hinzufügen`}
-                    onClick={() => onAssignToStop(group, shop.id)}
-                  >
-                    {shop.name.charAt(0)}
-                  </button>
-                ))}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="excluded-shop-block">
+          <h3 className="excluded-shop-title">Ohne Standard-Markt</h3>
+          <ul className="trip-stop-wish-list">
+            {noShopGroups.map((group) => (
+              <WishGroupRow key={group.product.id} group={group} moveTargets={moveTargetsFor(group)} />
+            ))}
+          </ul>
+        </div>
       )}
 
       {shopGroups.map(({ shop, wishGroups }) => (
-        <section key={shop.id} className="wishlist-shop-block">
-          <ul className="wishlist-shop-items">
+        <div key={shop.id} className="excluded-shop-block">
+          <h3 className="excluded-shop-title">{shop.name}</h3>
+          <ul className="trip-stop-wish-list">
             {wishGroups.map((group) => (
-              <li key={group.product.id}>{formatWishGroupLine(group)}</li>
+              <WishGroupRow key={group.product.id} group={group} moveTargets={moveTargetsFor(group)} />
             ))}
           </ul>
-          <button className="wishlist-shop-symbol" onClick={() => onAddWholeShopGroup(shop, wishGroups)}>
-            {shop.name}
-          </button>
-        </section>
+        </div>
       ))}
     </section>
   );

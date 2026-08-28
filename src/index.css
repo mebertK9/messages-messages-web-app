@@ -386,16 +386,14 @@ button {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .wish-group-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
-  border-radius: 8px;
-  padding: 8px 12px;
+  padding: 4px 0;
   font-size: 15px;
 }
 
@@ -408,20 +406,17 @@ button {
   color: #b91c1c;
 }
 
-.add-shop-chips {
+.excluded-shop-block {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.add-shop-chip {
-  border: 1px dashed #ccc;
-  border-radius: 999px;
-  background: none;
-  padding: 8px 14px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
+.excluded-shop-title {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9ca3af;
 }
 
 .commit-trip-button {
