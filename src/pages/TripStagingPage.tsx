@@ -80,6 +80,28 @@ export default function TripStagingPage({
     });
   }
 
+  /**
+   * Bulk-adds every remaining group of one shop from "Heute nicht" into that
+   * shop's stop, creating the stop if it doesn't exist yet. This is the only
+   * way to add a brand-new stop to the trip after the initial one.
+   */
+  function addWholeShopGroup(shop: Shop, groups: WishGroup[]) {
+    setExcludedGroups((current) =>
+      current.filter((group) => !groups.some((g) => g.product.id === group.product.id))
+    );
+    setStops((current) => {
+      const existingStop = current.find((stop) => stop.shop.id === shop.id);
+      if (existingStop) {
+        return current.map((stop) =>
+          stop.shop.id === shop.id
+            ? { ...stop, wishGroups: [...stop.wishGroups, ...groups] }
+            : stop
+        );
+      }
+      return [...current, { shop, wishGroups: groups }];
+    });
+  }
+
   async function handleCommit() {
     setCommitError("");
     setCommitting(true);
@@ -139,6 +161,7 @@ export default function TripStagingPage({
         shops={shops}
         activeStopShops={stops.map((stop) => stop.shop)}
         onAssignToStop={(group, shopId) => moveGroup(group, shopId)}
+        onAddWholeShopGroup={addWholeShopGroup}
       />
     </div>
   );

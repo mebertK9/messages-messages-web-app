@@ -419,6 +419,28 @@ button {
   color: #9ca3af;
 }
 
+.excluded-shop-card {
+  background: white;
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.excluded-shop-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.excluded-shop-card-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #6b7280;
+}
+
 .commit-trip-button {
   background: #15803d;
   color: white;
