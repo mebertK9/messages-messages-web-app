@@ -1,14 +1,19 @@
+import { Shop } from "../types/domain";
 import { TripStopDraft, WishGroup } from "../types/tripStaging";
 import WishGroupRow from "./WishGroupRow";
 
 interface Props {
   stop: TripStopDraft;
-  otherStops: TripStopDraft[];
+  shops: Shop[];
   onRemoveStop: () => void;
   onMoveGroup: (group: WishGroup, targetShopId: string | "excluded") => void;
 }
 
-export default function TripStopColumn({ stop, otherStops, onRemoveStop, onMoveGroup }: Props) {
+export default function TripStopColumn({ stop, shops, onRemoveStop, onMoveGroup }: Props) {
+  // Every market is offered as a move target, whether or not it already has
+  // a stop - picking one that doesn't yet creates it (handled in moveGroup).
+  const moveTargets = shops.filter((shop) => shop.id !== stop.shop.id);
+
   return (
     <div className="trip-stop-column">
       <div className="trip-stop-column-header">
@@ -29,9 +34,9 @@ export default function TripStopColumn({ stop, otherStops, onRemoveStop, onMoveG
           <WishGroupRow
             key={group.product.id}
             group={group}
-            moveTargets={otherStops.map((otherStop) => ({
-              shop: otherStop.shop,
-              onSelect: () => onMoveGroup(group, otherStop.shop.id)
+            moveTargets={moveTargets.map((shop) => ({
+              shop,
+              onSelect: () => onMoveGroup(group, shop.id)
             }))}
             onExclude={() => onMoveGroup(group, "excluded")}
           />

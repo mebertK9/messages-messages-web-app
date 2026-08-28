@@ -54,9 +54,10 @@ export default function TripStagingPage({
 
   /**
    * Moves one product's wishes to a stop (identified by shop id) or to
-   * "excluded". A stop that ends up with no wishes left is dropped
-   * automatically - once nothing is assigned to a shop anymore, it's no
-   * longer part of the trip.
+   * "excluded". If the target shop doesn't have a stop yet, one is created
+   * on the spot - so any wish can be sent to any market at any time,
+   * regardless of how many stops already exist. A stop that ends up with
+   * no wishes left is dropped automatically.
    */
   function moveGroup(group: WishGroup, target: string | "excluded") {
     setStops((current) => {
@@ -66,9 +67,17 @@ export default function TripStagingPage({
       }));
 
       if (target !== "excluded") {
-        updated = updated.map((stop) =>
-          stop.shop.id === target ? { ...stop, wishGroups: [...stop.wishGroups, group] } : stop
-        );
+        const alreadyExists = updated.some((stop) => stop.shop.id === target);
+        if (alreadyExists) {
+          updated = updated.map((stop) =>
+            stop.shop.id === target ? { ...stop, wishGroups: [...stop.wishGroups, group] } : stop
+          );
+        } else {
+          const targetShop = shops.find((shop) => shop.id === target);
+          if (targetShop) {
+            updated = [...updated, { shop: targetShop, wishGroups: [group] }];
+          }
+        }
       }
 
       return updated.filter((stop) => stop.wishGroups.length > 0);
@@ -140,7 +149,7 @@ export default function TripStagingPage({
             <TripStopColumn
               key={stop.shop.id}
               stop={stop}
-              otherStops={stops.filter((s) => s.shop.id !== stop.shop.id)}
+              shops={shops}
               onRemoveStop={() => removeStop(stop.shop.id)}
               onMoveGroup={moveGroup}
             />
@@ -159,7 +168,6 @@ export default function TripStagingPage({
       <TripExcludedSection
         excludedGroups={excludedGroups}
         shops={shops}
-        activeStopShops={stops.map((stop) => stop.shop)}
         onAssignToStop={(group, shopId) => moveGroup(group, shopId)}
         onAddWholeShopGroup={addWholeShopGroup}
       />

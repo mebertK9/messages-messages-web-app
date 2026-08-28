@@ -6,7 +6,6 @@ import WishGroupRow from "./WishGroupRow";
 interface Props {
   excludedGroups: WishGroup[];
   shops: Shop[];
-  activeStopShops: Shop[];
   onAssignToStop: (group: WishGroup, shopId: string) => void;
   onAddWholeShopGroup: (shop: Shop, groups: WishGroup[]) => void;
 }
@@ -14,7 +13,6 @@ interface Props {
 export default function TripExcludedSection({
   excludedGroups,
   shops,
-  activeStopShops,
   onAssignToStop,
   onAddWholeShopGroup
 }: Props) {
@@ -24,8 +22,10 @@ export default function TripExcludedSection({
 
   const { noShopGroups, shopGroups } = groupByPreferredShop(excludedGroups, shops);
 
+  // Every market is offered as a move target, whether or not it already has
+  // a stop - picking one that doesn't yet creates it (handled in moveGroup).
   function moveTargetsFor(group: WishGroup) {
-    return activeStopShops.map((shop) => ({
+    return shops.map((shop) => ({
       shop,
       onSelect: () => onAssignToStop(group, shop.id)
     }));
