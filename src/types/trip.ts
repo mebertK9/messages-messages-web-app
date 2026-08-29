@@ -36,3 +36,10 @@ export interface CreateTripStopRequest {
 export interface CreateTripRequest {
   stops: CreateTripStopRequest[];
 }
+
+export interface CompleteTripStopRequest {
+  // Wishes the buyer could not find at the shop - sent back to "open" by the
+  // server and reported to their creators. Everything else assigned to the
+  // stop is set to "purchased".
+  notFoundWishIds: string[];
+}

@@ -90,7 +90,7 @@ export default function DashboardPage() {
   }
 
   if (view.type === "activeTrip") {
-    return <ActiveTripPage trip={view.trip} onBack={goHome} />;
+    return <ActiveTripPage trip={view.trip} onBack={goHome} shops={[]} products={[]} />;
   }
 
   if (loading) {
