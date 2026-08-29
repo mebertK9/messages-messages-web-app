@@ -126,8 +126,15 @@ export default function TripStagingPage({
   async function assignPreferredShop(group: WishGroup, shop: Shop) {
     setAssignError("");
     try {
-      const updatedProduct = await updateProductShop(group.product.id, shop.id);
-      const updatedGroup: WishGroup = { ...group, product: updatedProduct };
+      await updateProductShop(group.product.id, shop.id);
+      // Set preferredShopId locally instead of trusting the PATCH response's
+      // shape - we already know the value (it's the shop that was clicked),
+      // so this avoids the group silently losing its market assignment if
+      // the response ever doesn't include it as expected.
+      const updatedGroup: WishGroup = {
+        ...group,
+        product: { ...group.product, preferredShopId: shop.id }
+      };
       moveGroup(updatedGroup, shop.id);
     } catch {
       setAssignError("Standard-Markt konnte nicht gespeichert werden.");
