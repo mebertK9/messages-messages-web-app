@@ -7,6 +7,7 @@ interface Props {
   excludedGroups: WishGroup[];
   shops: Shop[];
   onAssignToStop: (group: WishGroup, shopId: string) => void;
+  onAssignPreferredShop: (group: WishGroup, shop: Shop) => void;
   onAddWholeShopGroup: (shop: Shop, groups: WishGroup[]) => void;
 }
 
@@ -14,6 +15,7 @@ export default function TripExcludedSection({
   excludedGroups,
   shops,
   onAssignToStop,
+  onAssignPreferredShop,
   onAddWholeShopGroup
 }: Props) {
   if (excludedGroups.length === 0) {
@@ -21,15 +23,6 @@ export default function TripExcludedSection({
   }
 
   const { noShopGroups, shopGroups } = groupByPreferredShop(excludedGroups, shops);
-
-  // Every market is offered as a move target, whether or not it already has
-  // a stop - picking one that doesn't yet creates it (handled in moveGroup).
-  function moveTargetsFor(group: WishGroup) {
-    return shops.map((shop) => ({
-      shop,
-      onSelect: () => onAssignToStop(group, shop.id)
-    }));
-  }
 
   return (
     <section className="trip-staging-section">
@@ -40,7 +33,14 @@ export default function TripExcludedSection({
           <h3 className="excluded-shop-title">Ohne Standard-Markt</h3>
           <ul className="trip-stop-wish-list">
             {noShopGroups.map((group) => (
-              <WishGroupRow key={group.product.id} group={group} moveTargets={moveTargetsFor(group)} />
+              <WishGroupRow
+                key={group.product.id}
+                group={group}
+                moveTargets={shops.map((shop) => ({
+                  shop,
+                  onSelect: () => onAssignPreferredShop(group, shop)
+                }))}
+              />
             ))}
           </ul>
         </div>
@@ -60,7 +60,14 @@ export default function TripExcludedSection({
           </div>
           <ul className="trip-stop-wish-list">
             {wishGroups.map((group) => (
-              <WishGroupRow key={group.product.id} group={group} moveTargets={moveTargetsFor(group)} />
+              <WishGroupRow
+                key={group.product.id}
+                group={group}
+                moveTargets={shops.map((shop) => ({
+                  shop,
+                  onSelect: () => onAssignToStop(group, shop.id)
+                }))}
+              />
             ))}
           </ul>
         </div>

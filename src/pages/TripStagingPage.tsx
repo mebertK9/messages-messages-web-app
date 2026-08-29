@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createTrip } from "../services/trips";
+import { updateProductShop } from "../services/products";
 import { buildWishGroups, totalWishCount } from "../utils/tripStaging";
 import { Product, Shop, Wish } from "../types/domain";
 import { CreateTripRequest, ShoppingTripDetail } from "../types/trip";
@@ -41,6 +42,7 @@ export default function TripStagingPage({
 
   const [commitError, setCommitError] = useState("");
   const [committing, setCommitting] = useState(false);
+  const [assignError, setAssignError] = useState("");
 
   function removeStop(shopId: string) {
     setStops((current) => {
@@ -111,6 +113,42 @@ export default function TripStagingPage({
     });
   }
 
+  /**
+   * Only for products that have no preferred shop yet ("Ohne Standard-Markt").
+   * Persists the assignment via PATCH /products/:id - same as the wishlist
+   * screen's "Ohne Shop" buttons - and then places the group either into the
+   * matching stop (if that market is already active) or keeps it in "Heute
+   * nicht", now correctly grouped under its new preferred shop. Products
+   * that already have a preferred shop use moveGroup instead, which never
+   * persists anything - see workflow.md: the assignment is only a default
+   * recommendation, not a hard constraint, once it has been set.
+   */
+  async function assignPreferredShop(group: WishGroup, shop: Shop) {
+    setAssignError("");
+    try {
+      const updatedProduct = await updateProductShop(group.product.id, shop.id);
+      const updatedGroup: WishGroup = { ...group, product: updatedProduct };
+      const targetStopExists = stops.some((stop) => stop.shop.id === shop.id);
+
+      setExcludedGroups((current) => {
+        const withoutGroup = current.filter((g) => g.product.id !== group.product.id);
+        return targetStopExists ? withoutGroup : [...withoutGroup, updatedGroup];
+      });
+
+      if (targetStopExists) {
+        setStops((current) =>
+          current.map((stop) =>
+            stop.shop.id === shop.id
+              ? { ...stop, wishGroups: [...stop.wishGroups, updatedGroup] }
+              : stop
+          )
+        );
+      }
+    } catch {
+      setAssignError("Standard-Markt konnte nicht gespeichert werden.");
+    }
+  }
+
   async function handleCommit() {
     setCommitError("");
     setCommitting(true);
@@ -141,6 +179,7 @@ export default function TripStagingPage({
       </div>
 
       {commitError && <div className="error">{commitError}</div>}
+      {assignError && <div className="error">{assignError}</div>}
 
       <section className="trip-staging-section">
         <h2 className="wishlist-section-title">Yo, bring ich mit</h2>
@@ -169,6 +208,7 @@ export default function TripStagingPage({
         excludedGroups={excludedGroups}
         shops={shops}
         onAssignToStop={(group, shopId) => moveGroup(group, shopId)}
+        onAssignPreferredShop={assignPreferredShop}
         onAddWholeShopGroup={addWholeShopGroup}
       />
     </div>
