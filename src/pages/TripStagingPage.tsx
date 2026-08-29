@@ -116,11 +116,11 @@ export default function TripStagingPage({
   /**
    * Only for products that have no preferred shop yet ("Ohne Standard-Markt").
    * Persists the assignment via PATCH /products/:id - same as the wishlist
-   * screen's "Ohne Shop" buttons - and then places the group either into the
-   * matching stop (if that market is already active) or keeps it in "Heute
-   * nicht", now correctly grouped under its new preferred shop. Products
-   * that already have a preferred shop use moveGroup instead, which never
-   * persists anything - see workflow.md: the assignment is only a default
+   * screen's "Ohne Shop" buttons - then hands off to moveGroup for the actual
+   * placement (into the matching stop, or a newly created one), reusing the
+   * already-correct move logic instead of duplicating it. Products that
+   * already have a preferred shop use moveGroup directly and never persist
+   * anything - see workflow.md: the assignment is only a default
    * recommendation, not a hard constraint, once it has been set.
    */
   async function assignPreferredShop(group: WishGroup, shop: Shop) {
@@ -128,22 +128,7 @@ export default function TripStagingPage({
     try {
       const updatedProduct = await updateProductShop(group.product.id, shop.id);
       const updatedGroup: WishGroup = { ...group, product: updatedProduct };
-      const targetStopExists = stops.some((stop) => stop.shop.id === shop.id);
-
-      setExcludedGroups((current) => {
-        const withoutGroup = current.filter((g) => g.product.id !== group.product.id);
-        return targetStopExists ? withoutGroup : [...withoutGroup, updatedGroup];
-      });
-
-      if (targetStopExists) {
-        setStops((current) =>
-          current.map((stop) =>
-            stop.shop.id === shop.id
-              ? { ...stop, wishGroups: [...stop.wishGroups, updatedGroup] }
-              : stop
-          )
-        );
-      }
+      moveGroup(updatedGroup, shop.id);
     } catch {
       setAssignError("Standard-Markt konnte nicht gespeichert werden.");
     }
