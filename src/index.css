@@ -551,3 +551,25 @@ button {
   color: #9ca3af;
   font-size: 13px;
 }
+
+.new-wish-badge {
+  background: #e1f5ee;
+  color: #085041;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-left: 6px;
+}
+
+.end-trip-button {
+  background: #b91c1c;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.end-trip-button:disabled {
+  background: #9ca3af;
+  cursor: default;
+}

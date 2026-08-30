@@ -7,11 +7,19 @@ interface Props {
   stop: TripStopWithWishes;
   shop: Shop | undefined;
   products: Product[];
+  newWishIds: Set<string>;
   completing: boolean;
   onComplete: (notFoundWishIds: string[]) => void;
 }
 
-export default function ActiveTripStopCard({ stop, shop, products, completing, onComplete }: Props) {
+export default function ActiveTripStopCard({
+  stop,
+  shop,
+  products,
+  newWishIds,
+  completing,
+  onComplete
+}: Props) {
   // Tracks which products the buyer couldn't find, keyed by product id -
   // ticking a group marks all of its wishes as not found, since "not found
   // in the shop" is a statement about the product, not about who wished
@@ -53,17 +61,24 @@ export default function ActiveTripStopCard({ stop, shop, products, completing, o
 
       {!isDone && wishGroups.length > 0 && (
         <ul className="trip-stop-wish-list">
-          {wishGroups.map((group) => (
-            <li key={group.product.id} className="not-found-row">
-              <input
-                type="checkbox"
-                className="not-found-checkbox"
-                checked={notFoundProductIds.has(group.product.id)}
-                onChange={() => toggleNotFound(group.product.id)}
-              />
-              <span>{formatWishGroupLine(group)}</span>
-            </li>
-          ))}
+          {wishGroups.map((group) => {
+            // A group counts as "new" if any of its wishes was auto-added
+            // to the trip after it started - a group can mix an originally
+            // planned wish with a later-added one for the same product.
+            const isNew = group.wishes.some((wish) => newWishIds.has(wish.id));
+            return (
+              <li key={group.product.id} className="not-found-row">
+                <input
+                  type="checkbox"
+                  className="not-found-checkbox"
+                  checked={notFoundProductIds.has(group.product.id)}
+                  onChange={() => toggleNotFound(group.product.id)}
+                />
+                <span>{formatWishGroupLine(group)}</span>
+                {isNew && <span className="new-wish-badge">neu</span>}
+              </li>
+            );
+          })}
         </ul>
       )}
 

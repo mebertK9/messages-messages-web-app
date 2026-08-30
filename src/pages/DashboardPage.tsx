@@ -3,6 +3,7 @@ import { listShops } from "../services/shops";
 import { listCategories } from "../services/categories";
 import { listOpenWishes } from "../services/wishes";
 import { listAllProducts } from "../services/products";
+import { getTrip, listTrips } from "../services/trips";
 import { countWishesByShop, countWishesByCategory } from "../utils/wishCounts";
 import { Shop, Category, Wish, Product } from "../types/domain";
 import { ShoppingTripDetail } from "../types/trip";
@@ -23,22 +24,28 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [openWishes, setOpenWishes] = useState<Wish[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  // Id of the currently running trip, if any - MVP only ever expects at
+  // most one. Drives whether clicking a shop resumes it instead of staging
+  // a new one. Null means "no trip running".
+  const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [view, setView] = useState<View>({ type: "home" });
 
   async function loadDashboardData() {
-    const [shopsResult, categoriesResult, wishesResult, productsResult] =
+    const [shopsResult, categoriesResult, wishesResult, productsResult, activeTrips] =
       await Promise.all([
         listShops(),
         listCategories(),
         listOpenWishes(),
-        listAllProducts()
+        listAllProducts(),
+        listTrips("active")
       ]);
     setShops(shopsResult);
     setCategories(categoriesResult);
     setOpenWishes(wishesResult);
     setProducts(productsResult);
+    setActiveTripId(activeTrips[0]?.id ?? null);
   }
 
   useEffect(() => {
@@ -64,7 +71,19 @@ export default function DashboardPage() {
     }
   }
 
-  function startShopTrip(shop: Shop) {
+  async function startShopTrip(shop: Shop) {
+    if (activeTripId) {
+      // A trip is already running - resume it instead of staging a new one,
+      // regardless of which shop tile was clicked.
+      try {
+        const trip = await getTrip(activeTripId);
+        setView({ type: "activeTrip", trip });
+      } catch {
+        setError("Laufender Einkauf konnte nicht geladen werden");
+      }
+      return;
+    }
+
     setView({ type: "staging", shop });
   }
 

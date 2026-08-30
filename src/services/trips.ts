@@ -2,7 +2,9 @@ import { apiFetch } from "./api";
 import {
   CompleteTripStopRequest,
   CreateTripRequest,
+  ShoppingTrip,
   ShoppingTripDetail,
+  TripStatus,
   TripStop
 } from "../types/trip";
 
@@ -11,6 +13,15 @@ export async function createTrip(request: CreateTripRequest): Promise<ShoppingTr
     method: "POST",
     body: JSON.stringify(request)
   });
+}
+
+/** Lists trips (without stop/wish detail), optionally filtered by status.
+ * Used by the dashboard to check whether a trip is already running, so it
+ * knows whether clicking a shop should resume that trip instead of staging
+ * a new one - MVP only ever expects at most one active trip. */
+export async function listTrips(status?: TripStatus): Promise<ShoppingTrip[]> {
+  const query = status ? `?status=${status}` : "";
+  return apiFetch<ShoppingTrip[]>(`/trips${query}`);
 }
 
 /** Fetches the current state of a trip, including all stops and their
