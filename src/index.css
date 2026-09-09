@@ -475,6 +475,26 @@ button {
   gap: 12px;
 }
 
+.active-trip-stop-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.skip-stop-button {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid #9ca3af;
+  color: #4b5563;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.skip-stop-button:disabled {
+  color: #9ca3af;
+  cursor: default;
+}
+
 .active-trip-header h1 {
   margin: 0;
   font-size: 20px;
@@ -521,17 +541,9 @@ button {
   color: #9ca3af;
 }
 
-.not-found-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.trip-stop-wish-row {
   padding: 4px 0;
   font-size: 15px;
-}
-
-.not-found-checkbox {
-  width: 18px;
-  height: 18px;
 }
 
 .complete-stop-button {
