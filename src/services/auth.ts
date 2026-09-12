@@ -1,4 +1,5 @@
-import { LoginRequest, LoginResponse } from "../types/auth";
+import { apiFetch } from "./api";
+import { LoginRequest, LoginResponse, CreateUserRequest } from "../types/auth";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -21,4 +22,19 @@ export async function login(
   }
 
   return response.json();
+}
+
+/**
+ * Creates a new household member from inside the app (dashboard). The
+ * backend's /auth/register endpoint logs the newly created user in and
+ * returns an access token for *that* user - callers must not store it as
+ * the current session's token, or they'd silently switch accounts.
+ */
+export async function registerUser(
+  payload: CreateUserRequest
+): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }

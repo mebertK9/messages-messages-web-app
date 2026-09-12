@@ -200,6 +200,13 @@ button {
 
 /* ---- Wish count line on the dashboard ---- */
 
+.dashboard-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .wish-count-line {
   align-self: flex-start;
   border: none;
@@ -584,4 +591,92 @@ button {
 .end-trip-button:disabled {
   background: #9ca3af;
   cursor: default;
+}
+
+/* ---- Create user (dashboard header) ---- */
+
+.create-user-button {
+  border: 1px dashed #ccc;
+  border-radius: 8px;
+  background: none;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: #374151;
+  font-size: 13px;
+}
+
+.create-user-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.create-user-form {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.create-user-form input {
+  min-width: 0;
+  flex: 1 1 120px;
+}
+
+.create-user-cancel {
+  background: none;
+  border: 1px solid #ddd;
+  color: #6b7280;
+}
+
+.create-user-confirmation {
+  color: #15803d;
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ---- Product master-data edit (category page) ---- */
+
+.product-entry {
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-product-button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: #6b7280;
+  padding: 2px 4px;
+}
+
+.product-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 4px 10px;
+}
+
+.product-edit-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: white;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #374151;
+}
+
+.chip-active {
+  border-color: #15803d;
+  color: #15803d;
+  font-weight: 600;
 }

@@ -11,6 +11,7 @@ import CategoryPage from "./CategoryPage";
 import WishlistPage from "./WishlistPage";
 import TripStagingPage from "./TripStagingPage";
 import ActiveTripPage from "./ActiveTripPage";
+import CreateUserForm from "./CreateUserForm";
 
 type View =
   | { type: "home" }
@@ -92,7 +93,14 @@ export default function DashboardPage() {
   }
 
   if (view.type === "category") {
-    return <CategoryPage category={view.category} onBack={goHome} />;
+    return (
+      <CategoryPage
+        category={view.category}
+        shops={shops}
+        categories={categories}
+        onBack={goHome}
+      />
+    );
   }
 
   if (view.type === "staging") {
@@ -140,9 +148,12 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard">
-      <button className="wish-count-line" onClick={() => setView({ type: "wishlist" })}>
-        {openWishes.length} {openWishes.length === 1 ? "Wunsch" : "Wünsche"}
-      </button>
+      <div className="dashboard-top-row">
+        <button className="wish-count-line" onClick={() => setView({ type: "wishlist" })}>
+          {openWishes.length} {openWishes.length === 1 ? "Wunsch" : "Wünsche"}
+        </button>
+        <CreateUserForm />
+      </div>
 
       <section className="tile-grid">
         <h2 className="tile-grid-title">Einkauf starten</h2>

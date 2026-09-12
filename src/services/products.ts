@@ -30,3 +30,13 @@ export async function updateProductShop(
     body: JSON.stringify({ preferredShopId })
   });
 }
+
+export async function updateProductCategory(
+  productId: string,
+  categoryId: string
+): Promise<Product> {
+  return apiFetch<Product>(`/products/${productId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ categoryId })
+  });
+}
