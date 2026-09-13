@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function LoginPage({ onLogin }: Props) {
-        const [email, setEmail] = useState("");
+        const [name, setName] = useState("");
         const [password, setPassword] = useState("");
         const [loading, setLoading] = useState(false);
         const [error, setError] = useState("");
@@ -19,7 +19,7 @@ export default function LoginPage({ onLogin }: Props) {
 
                 try {
                         const result = await login({
-                                email,
+                                name,
                                 password
                         });
 
@@ -47,12 +47,13 @@ export default function LoginPage({ onLogin }: Props) {
                                 <h1>Household Wishlist</h1>
 
                                 <input
-                                        type="email"
-                                        placeholder="E-Mail"
-                                        value={email}
+                                        type="text"
+                                        placeholder="Name"
+                                        value={name}
                                         onChange={(e) =>
-                                                setEmail(e.target.value)
+                                                setName(e.target.value)
                                         }
+                                        autoComplete="username"
                                         required
                                 />
 
@@ -63,6 +64,7 @@ export default function LoginPage({ onLogin }: Props) {
                                         onChange={(e) =>
                                                 setPassword(e.target.value)
                                         }
+                                        autoComplete="current-password"
                                         required
                                 />
 

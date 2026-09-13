@@ -25,12 +25,18 @@ export default function CreateUserForm() {
       // The response's accessToken belongs to the newly created user, not
       // to whoever is filling out this form - it's intentionally ignored
       // here so the current session stays logged in as-is.
-      const { user } = await registerUser({ name, email, password });
+      const { user } = await registerUser({
+        name,
+        password,
+        // Email is optional - only send it if actually filled in, so an
+        // empty string doesn't collide with someone else's empty email.
+        email: email.trim() ? email.trim() : undefined
+      });
       setConfirmation(`${user.name} wurde angelegt.`);
       reset();
       setOpen(false);
     } catch {
-      setError("Nutzer konnte nicht angelegt werden (E-Mail evtl. schon vergeben).");
+      setError("Nutzer konnte nicht angelegt werden (Name/E-Mail evtl. schon vergeben).");
     } finally {
       setCreating(false);
     }
@@ -62,10 +68,9 @@ export default function CreateUserForm() {
           />
           <input
             type="email"
-            placeholder="E-Mail"
+            placeholder="E-Mail (optional)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
           />
           <input
             type="password"

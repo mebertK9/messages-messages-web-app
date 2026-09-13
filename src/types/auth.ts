@@ -1,5 +1,5 @@
 export interface LoginRequest {
-  email: string;
+  name: string;
   password: string;
 }
 
@@ -8,12 +8,12 @@ export interface LoginResponse {
   user: {
     id: string;
     name: string;
-    email: string;
+    email?: string | null;
   };
 }
 
 export interface CreateUserRequest {
   name: string;
-  email: string;
   password: string;
+  email?: string;
 }
