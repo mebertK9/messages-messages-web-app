@@ -38,3 +38,12 @@ export async function registerUser(
     body: JSON.stringify(payload)
   });
 }
+
+export async function updateMe(
+  payload: { email?: string; currentPassword?: string; newPassword?: string }
+): Promise<{ id: string; name: string; email?: string | null }> {
+  return apiFetch("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}

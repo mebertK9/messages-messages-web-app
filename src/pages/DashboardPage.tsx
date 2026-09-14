@@ -12,6 +12,7 @@ import WishlistPage from "./WishlistPage";
 import TripStagingPage from "./TripStagingPage";
 import ActiveTripPage from "./ActiveTripPage";
 import CreateUserForm from "./CreateUserForm";
+import MyAccountForm from "./MyAccountForm";
 
 type View =
   | { type: "home" }
@@ -152,7 +153,10 @@ export default function DashboardPage() {
         <button className="wish-count-line" onClick={() => setView({ type: "wishlist" })}>
           {openWishes.length} {openWishes.length === 1 ? "Wunsch" : "Wünsche"}
         </button>
-        <CreateUserForm />
+        <div className="dashboard-top-row-actions">
+          <MyAccountForm />
+          <CreateUserForm />
+        </div>
       </div>
 
       <section className="tile-grid">
