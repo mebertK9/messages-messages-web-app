@@ -132,7 +132,6 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="container">
-        <h3>Welcome to Dashboard</h3>
         <WishlistLoader />
       </div>
     );
