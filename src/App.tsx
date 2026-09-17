@@ -1,9 +1,9 @@
 import { useState } from "react";
+import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
-import WishlistLoader from "./pages/WishlistLoader";
 
 export default function App() {
-  const [authenticated] =
+  const [authenticated, setAuthenticated] =
     useState(
       !!localStorage.getItem("accessToken")
     );
@@ -12,6 +12,10 @@ export default function App() {
     <DashboardPage />
   ) :
     (
-      <WishlistLoader />
+      <LoginPage
+        onLogin={() =>
+          setAuthenticated(true)
+        }
+      />
     );
 }
