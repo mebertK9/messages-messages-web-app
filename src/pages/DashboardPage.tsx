@@ -13,6 +13,7 @@ import TripStagingPage from "./TripStagingPage";
 import ActiveTripPage from "./ActiveTripPage";
 import CreateUserForm from "./CreateUserForm";
 import MyAccountForm from "./MyAccountForm";
+import WishlistLoader from "./WishlistLoader";
 
 type View =
   | { type: "home" }
@@ -131,7 +132,8 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="container">
-        <p>Lädt...</p>
+        <h3>Welcome to Dashboard</h3>
+        <WishlistLoader />
       </div>
     );
   }
