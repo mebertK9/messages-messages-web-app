@@ -11,17 +11,72 @@ const THINKING_PAUSE_MAX_MS = 4500;
 const LINE_PAUSE_MS = 200; // short pause after a line is committed
 const HOLD_COMPLETE_NOTE_MS = 2000; // how long the finished note stays visible
 
-const DEFAULT_ITEMS: string[] = [
+const FALLBACK_ITEMS = [
   "Schokolade",
-  "3 Autos",
-  "Schokolade",
-  "ein Riesenrad",
-  "Schokolade",
+  "BMX",
+  "Riesenrad",
+  "Weltfrieden",
+  "Chips",
+  "Sauna",
+  "Jimin",
+  "Danial Craig",
+  "Taosbrot",
+  "3D Drucker",
+  "Trabbi",
+  "m&m&m&m&m's",
+  "Avokados",
+  "5 kg Salz",
 ];
+
+const DEFAULT_ITEMS: string[] = FALLBACK_ITEMS;
 
 interface WishlistLoaderProps {
   items?: string[];
   className?: string;
+}
+
+function shuffle<T>(values: T[]): T[] {
+  const next = [...values];
+
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+
+  return next;
+}
+
+async function loadLoaderWishes(): Promise<string[]> {
+  const fallbackItems = shuffle(FALLBACK_ITEMS).slice(0, 5);
+
+  try {
+    const response = await fetch("/.loader_wishes", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Could not load wishlist loader items: ${response.status}`);
+    }
+
+    const text = await response.text();
+    const entries = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter((line, index, all) => all.indexOf(line) === index);
+
+    if (entries.length === 0) {
+      return fallbackItems;
+    }
+
+    const picked = shuffle(entries).slice(0, Math.min(5, entries.length));
+
+    if (picked.length >= 5) {
+      return picked;
+    }
+
+    const combined = [...picked, ...shuffle(FALLBACK_ITEMS)];
+    return shuffle(combined).slice(0, 5);
+  } catch {
+    return fallbackItems;
+  }
 }
 
 function wait(ms: number): Promise<void> {
@@ -64,15 +119,40 @@ async function typeText(
  * parent should simply stop rendering it once the real content is ready.
  */
 export default function WishlistLoader({
-  items = DEFAULT_ITEMS,
+  items,
   className = "",
 }: WishlistLoaderProps) {
+  const [loadedItems, setLoadedItems] = useState<string[]>(DEFAULT_ITEMS);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
   const [currentItemText, setCurrentItemText] = useState("");
   const [isThinking, setIsThinking] = useState(true);
   const [isComplete, setIsComplete] = useState(false);
 
   const cancelledRef = useRef(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadItems() {
+      if (items !== undefined) {
+        setLoadedItems(items);
+        return;
+      }
+
+      const nextItems = await loadLoaderWishes();
+      if (isMounted) {
+        setLoadedItems(nextItems);
+      }
+    }
+
+    loadItems();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [items]);
+
+  const selectedItems = items ?? loadedItems;
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -84,7 +164,7 @@ export default function WishlistLoader({
         setCurrentItemText("");
         setIsComplete(false);
 
-        for (const item of items) {
+        for (const item of selectedItems) {
           if (cancelledRef.current) return;
 
           setIsThinking(true);
@@ -112,7 +192,7 @@ export default function WishlistLoader({
     return () => {
       cancelledRef.current = true;
     };
-  }, [items]);
+  }, [selectedItems]);
 
   return (
     <div className={`wishlist-loader ${className}`} role="status">
