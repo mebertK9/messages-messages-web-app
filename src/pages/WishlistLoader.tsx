@@ -46,16 +46,45 @@ function shuffle<T>(values: T[]): T[] {
   return next;
 }
 
+// The gist holds a single plain-text file, one wish per line - no JSON,
+// YAML, or key/value structure. Editing it on gist.github.com is all it
+// takes to change the wishlist loader's items; no code change or
+// redeploy of this app required.
+// Find the ID in the gist's URL: https://gist.github.com/<user>/<GIST_ID>
+const WISHLIST_GIST_ID = "96ce344bbd92330e591f02f2f3fc5498";
+
+/**
+ * Fetches the raw text content of the wishlist gist's (single) file via
+ * the GitHub API. This intentionally does NOT go through the project's own
+ * API server: the whole point is that the item list must be available even
+ * while that backend is still asleep/waking up. GitHub's API is a separate,
+ * always-on service with no cold-start problem.
+ */
+async function fetchGistFileContent(): Promise<string> {
+  const response = await fetch(`https://api.github.com/gists/${WISHLIST_GIST_ID}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Could not load wishlist loader items: ${response.status}`);
+  }
+
+  const gist = await response.json();
+  const files = Object.values(gist.files ?? {}) as Array<{ content?: string }>;
+  const fileContent = files[0]?.content;
+
+  if (typeof fileContent !== "string") {
+    throw new Error("Wishlist loader gist has no readable file content");
+  }
+
+  return fileContent;
+}
+
 async function loadLoaderWishes(): Promise<string[]> {
   const fallbackItems = shuffle(FALLBACK_ITEMS).slice(0, 5);
 
   try {
-    const response = await fetch("https://gist.github.com/mebertK9/96ce344bbd92330e591f02f2f3fc5498", { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`Could not load wishlist loader items: ${response.status}`);
-    }
-
-    const text = await response.text();
+    const text = await fetchGistFileContent();
     const entries = text
       .split(/\r?\n/)
       .map((line) => line.trim())
