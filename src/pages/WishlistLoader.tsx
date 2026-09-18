@@ -50,7 +50,7 @@ async function loadLoaderWishes(): Promise<string[]> {
   const fallbackItems = shuffle(FALLBACK_ITEMS).slice(0, 5);
 
   try {
-    const response = await fetch("/.loader_wishes", { cache: "no-store" });
+    const response = await fetch("/etc/secrets/.loader_wishes", { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`Could not load wishlist loader items: ${response.status}`);
     }
