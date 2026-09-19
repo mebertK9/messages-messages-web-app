@@ -2,33 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import "../WishlistLoader.css";
 
 // --- Timing constants -------------------------------------------------
-// Tuned so one full cycle (all items typed + a short hold) takes roughly
-// 20 seconds on average. Adjust freely to match your real backend
-// cold-start time.
-const CHAR_TYPE_DELAY_MS = 45; // delay between each typed character of an item
+const CHAR_TYPE_DELAY_MS = 70; // delay between each typed character of an item
 const THINKING_PAUSE_MIN_MS = 1500; // "what else do I need..." pause before an item
 const THINKING_PAUSE_MAX_MS = 4500;
 const LINE_PAUSE_MS = 200; // short pause after a line is committed
-const HOLD_COMPLETE_NOTE_MS = 2000; // how long the finished note stays visible
-
-const FALLBACK_ITEMS = [
-  "Schokolade",
-  "BMX",
-  "Riesenrad",
-  "Weltfrieden",
-  "Chips",
-  "Sauna",
-  "Jimin",
-  "Danial Craig",
-  "Taosbrot",
-  "3D Drucker",
-  "Trabbi",
-  "m&m&m&m&m's",
-  "Avokados",
-  "5 kg Salz",
-];
-
-const DEFAULT_ITEMS: string[] = FALLBACK_ITEMS;
+const EMPTY_LIST_RETRY_DELAY_MS = 500; // how often to re-check while items haven't loaded yet
 
 interface WishlistLoaderProps {
   items?: string[];
@@ -80,32 +58,20 @@ async function fetchGistFileContent(): Promise<string> {
   return fileContent;
 }
 
+/**
+ * Loads the wish entries from the gist, one per line. Returns an empty
+ * array (rather than any made-up placeholder content) if the gist can't be
+ * reached or read - the component simply keeps waiting until items become
+ * available.
+ */
 async function loadLoaderWishes(): Promise<string[]> {
-  const fallbackItems = shuffle(FALLBACK_ITEMS).slice(0, 5);
+  const text = await fetchGistFileContent();
 
-  try {
-    const text = await fetchGistFileContent();
-    const entries = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .filter((line, index, all) => all.indexOf(line) === index);
-
-    if (entries.length === 0) {
-      return fallbackItems;
-    }
-
-    const picked = shuffle(entries).slice(0, Math.min(5, entries.length));
-
-    if (picked.length >= 5) {
-      return picked;
-    }
-
-    const combined = [...picked, ...shuffle(FALLBACK_ITEMS)];
-    return shuffle(combined).slice(0, 5);
-  } catch {
-    return fallbackItems;
-  }
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line, index, all) => all.indexOf(line) === index);
 }
 
 function wait(ms: number): Promise<void> {
@@ -138,24 +104,24 @@ async function typeText(
 /**
  * WishlistLoader
  *
- * A loading indicator disguised as a hand-written wishlist note that gets
- * filled in item by item. Meant to be shown while a backend (e.g. a
- * sleeping Render service) wakes up. The user's name is intentionally NOT
- * part of this component - it is only entered after loading has finished,
- * so this note only ever shows wishes, never a signature.
+ * A loading indicator disguised as a hand-written wishlist note that keeps
+ * growing, one wish at a time, for as long as it stays mounted. Meant to be
+ * shown while a backend (e.g. a sleeping Render service) wakes up. Once all
+ * known wishes have been typed, it reshuffles the same list and keeps
+ * going - the note is never cleared or restarted, it only ever grows.
  *
- * The animation loops forever until the component is unmounted, so the
- * parent should simply stop rendering it once the real content is ready.
+ * The user's name is intentionally NOT part of this component - it is only
+ * entered after loading has finished, so this note only ever shows wishes,
+ * never a signature.
  */
 export default function WishlistLoader({
   items,
   className = "",
 }: WishlistLoaderProps) {
-  const [loadedItems, setLoadedItems] = useState<string[]>(DEFAULT_ITEMS);
+  const [loadedItems, setLoadedItems] = useState<string[]>([]);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
   const [currentItemText, setCurrentItemText] = useState("");
   const [isThinking, setIsThinking] = useState(true);
-  const [isComplete, setIsComplete] = useState(false);
 
   const cancelledRef = useRef(false);
 
@@ -168,9 +134,14 @@ export default function WishlistLoader({
         return;
       }
 
-      const nextItems = await loadLoaderWishes();
-      if (isMounted) {
-        setLoadedItems(nextItems);
+      try {
+        const nextItems = await loadLoaderWishes();
+        if (isMounted) {
+          setLoadedItems(nextItems);
+        }
+      } catch (loadError) {
+        // No fallback content by design - just log and keep waiting.
+        console.error("Failed to load wishlist loader items", loadError);
       }
     }
 
@@ -186,14 +157,18 @@ export default function WishlistLoader({
   useEffect(() => {
     cancelledRef.current = false;
 
-    async function runCycle() {
+    async function runContinuousTyping() {
       while (!cancelledRef.current) {
-        // Reset the note for a fresh cycle.
-        setCompletedItems([]);
-        setCurrentItemText("");
-        setIsComplete(false);
+        if (selectedItems.length === 0) {
+          await wait(EMPTY_LIST_RETRY_DELAY_MS);
+          continue;
+        }
 
-        for (const item of selectedItems) {
+        // A fresh random order each pass through the list - always every
+        // item, never a subset.
+        const passOrder = shuffle(selectedItems);
+
+        for (const item of passOrder) {
           if (cancelledRef.current) return;
 
           setIsThinking(true);
@@ -204,19 +179,15 @@ export default function WishlistLoader({
           await typeText(item, CHAR_TYPE_DELAY_MS, cancelledRef, setCurrentItemText);
           if (cancelledRef.current) return;
 
+          // The note only ever grows - never cleared or reset.
           setCompletedItems((prev) => [...prev, item]);
           setCurrentItemText("");
           await wait(LINE_PAUSE_MS);
         }
-
-        if (cancelledRef.current) return;
-
-        setIsComplete(true);
-        await wait(HOLD_COMPLETE_NOTE_MS);
       }
     }
 
-    runCycle();
+    runContinuousTyping();
 
     return () => {
       cancelledRef.current = true;
@@ -239,22 +210,20 @@ export default function WishlistLoader({
             </li>
           ))}
 
-          {!isComplete && (
-            <li className="wishlist-loader__line wishlist-loader__line--active">
-              {isThinking ? (
-                <span className="wishlist-loader__thinking">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              ) : (
-                <>
-                  {currentItemText}
-                  <span className="wishlist-loader__cursor" />
-                </>
-              )}
-            </li>
-          )}
+          <li className="wishlist-loader__line wishlist-loader__line--active">
+            {isThinking ? (
+              <span className="wishlist-loader__thinking">
+                <span />
+                <span />
+                <span />
+              </span>
+            ) : (
+              <>
+                {currentItemText}
+                <span className="wishlist-loader__cursor" />
+              </>
+            )}
+          </li>
         </ul>
       </div>
 
