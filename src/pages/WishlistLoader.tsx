@@ -48,8 +48,6 @@ async function fetchGistFileContent(): Promise<string> {
   }
 
   const text = await response.text();
- 
-
   return text;
 }
 
