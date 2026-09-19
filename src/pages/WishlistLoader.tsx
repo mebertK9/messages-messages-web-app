@@ -7,11 +7,19 @@ const THINKING_PAUSE_MIN_MS = 1500; // "what else do I need..." pause before an 
 const THINKING_PAUSE_MAX_MS = 4500;
 const LINE_PAUSE_MS = 200; // short pause after a line is committed
 const EMPTY_LIST_RETRY_DELAY_MS = 500; // how often to re-check while items haven't loaded yet
+const WISHLIST_GIST_ID = import.meta.env.VITE_GIST_ID;
+
+if (!WISHLIST_GIST_ID) {
+  throw new Error(
+    "Missing environment variable VITE_GIST_ID. Set it to the GitHub gist ID used by WishlistLoader."
+  );
+}
 
 interface WishlistLoaderProps {
   items?: string[];
   className?: string;
 }
+
 
 function shuffle<T>(values: T[]): T[] {
   const next = [...values];
@@ -23,13 +31,6 @@ function shuffle<T>(values: T[]): T[] {
 
   return next;
 }
-
-// The gist holds a single plain-text file, one wish per line - no JSON,
-// YAML, or key/value structure. Editing it on gist.github.com is all it
-// takes to change the wishlist loader's items; no code change or
-// redeploy of this app required.
-// Find the ID in the gist's URL: https://gist.github.com/<user>/<GIST_ID>
-const WISHLIST_GIST_ID = import.meta.env.GIST_ID;
 
 /**
  * Fetches the raw text content of the wishlist gist's (single) file via
