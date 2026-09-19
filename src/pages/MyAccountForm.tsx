@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { UserRound } from "lucide-react";
 import { updateMe } from "../services/auth";
 
 export default function MyAccountForm() {
@@ -56,13 +57,15 @@ export default function MyAccountForm() {
     <div className="my-account-container">
       {!open && (
         <button
-          className="my-account-link"
+          className="my-account-link icon-button"
+          aria-label="Eigene Account-Daten öffnen"
+          title="Eigene Account-Daten"
           onClick={() => {
             setOpen(true);
             setConfirmation("");
           }}
         >
-          Meine Daten
+          <UserRound className="dashboard-icon" aria-hidden="true" />
         </button>
       )}
 

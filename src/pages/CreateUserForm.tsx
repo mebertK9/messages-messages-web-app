@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Settings } from "lucide-react";
 import { registerUser } from "../services/auth";
 
 export default function CreateUserForm() {
@@ -46,13 +47,15 @@ export default function CreateUserForm() {
     <div className="create-user-container">
       {!open && (
         <button
-          className="create-user-button"
+          className="create-user-button icon-button"
+          aria-label="Administration öffnen"
+          title="Administration"
           onClick={() => {
             setOpen(true);
             setConfirmation("");
           }}
         >
-          + Nutzer anlegen
+          <Settings className="dashboard-icon" aria-hidden="true" />
         </button>
       )}
 
