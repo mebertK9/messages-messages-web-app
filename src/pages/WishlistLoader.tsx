@@ -47,8 +47,15 @@ async function fetchGistFileContent(): Promise<string> {
     throw new Error(`Could not load wishlist loader items: ${response.status}`);
   }
 
-  const text = await response.text();
-  return text;
+  const gist = await response.json();
+  const files = Object.values(gist.files ?? {}) as Array<{ content?: string }>;
+  const fileContent = files[0]?.content;
+
+  if (typeof fileContent !== "string") {
+    throw new Error("Wishlist loader gist has no readable file content");
+  }
+
+  return fileContent;
 }
 
 /**
@@ -66,14 +73,6 @@ async function loadLoaderWishes(): Promise<string[]> {
     .filter(Boolean)
     .filter((line, index, all) => all.indexOf(line) === index);
 }
-
-/**
- * Fetches the raw text content of the wishlist gist's (single) file via
- * the GitHub API. This intentionally does NOT go through the project's own
- * API server: the whole point is that the item list must be available even
- * while that backend is still asleep/waking up. GitHub's API is a separate,
- * always-on service with no cold-start problem.
- */
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
