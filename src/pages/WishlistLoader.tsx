@@ -29,7 +29,7 @@ function shuffle<T>(values: T[]): T[] {
 // takes to change the wishlist loader's items; no code change or
 // redeploy of this app required.
 // Find the ID in the gist's URL: https://gist.github.com/<user>/<GIST_ID>
-const WISHLIST_GIST_ID = import.meta.env.VITE_GIST_ID;
+const WISHLIST_GIST_ID = import.meta.env.GIST_ID;
 
 /**
  * Fetches the raw text content of the wishlist gist's (single) file via
