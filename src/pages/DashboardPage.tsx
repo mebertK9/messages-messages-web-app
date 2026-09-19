@@ -168,21 +168,6 @@ export default function DashboardPage() {
       </div>
 
       <section className="tile-grid">
-        <h2 className="tile-grid-title">Einkauf starten</h2>
-        <div className="tile-grid-squares">
-          {shops.slice(0, 4).map((shop) => {
-            const count = shopWishCounts.get(shop.id) ?? 0;
-            return (
-              <button key={shop.id} className="tile" onClick={() => startShopTrip(shop)}>
-                {shop.name}
-                {count > 0 && <span className="tile-badge">{count}</span>}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="tile-grid">
         <h2 className="tile-grid-title">Wunsch aufschreiben</h2>
         <div className="tile-grid-squares">
           {categories.slice(0, 4).map((category) => {
@@ -194,6 +179,21 @@ export default function DashboardPage() {
                 onClick={() => setView({ type: "category", category })}
               >
                 {category.name}
+                {count > 0 && <span className="tile-badge">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="tile-grid">
+        <h2 className="tile-grid-title">Einkauf starten</h2>
+        <div className="tile-grid-squares">
+          {shops.slice(0, 4).map((shop) => {
+            const count = shopWishCounts.get(shop.id) ?? 0;
+            return (
+              <button key={shop.id} className="tile" onClick={() => startShopTrip(shop)}>
+                {shop.name}
                 {count > 0 && <span className="tile-badge">{count}</span>}
               </button>
             );
