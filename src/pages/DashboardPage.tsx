@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Heart } from "lucide-react";
 import { listShops } from "../services/shops";
 import { listCategories } from "../services/categories";
 import { listOpenWishes } from "../services/wishes";
@@ -151,8 +152,14 @@ export default function DashboardPage() {
   return (
     <div className="dashboard">
       <div className="dashboard-top-row">
-        <button className="wish-count-line" onClick={() => setView({ type: "wishlist" })}>
-          {openWishes.length} {openWishes.length === 1 ? "Wunsch" : "Wünsche"}
+        <button
+          className="wish-count-line icon-button"
+          aria-label={`Wunschliste, ${openWishes.length} ${openWishes.length === 1 ? "Wunsch" : "Wünsche"}`}
+          title="Wunschliste"
+          onClick={() => setView({ type: "wishlist" })}
+        >
+          <Heart className="dashboard-icon" aria-hidden="true" />
+          <span className="dashboard-icon-badge">{openWishes.length}</span>
         </button>
         <div className="dashboard-top-row-actions">
           <MyAccountForm />

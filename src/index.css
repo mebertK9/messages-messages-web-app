@@ -211,11 +211,49 @@ button {
   align-self: flex-start;
   border: none;
   background: none;
-  padding: 4px 0;
-  font-size: 14px;
+  padding: 4px;
   color: #374151;
   cursor: pointer;
-  text-decoration: underline;
+}
+
+.icon-button {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.icon-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.dashboard-icon {
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+}
+
+.dashboard-icon-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #15803d;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 /* ---- Wishlist screen ---- */
@@ -595,9 +633,16 @@ button {
 
 .dashboard-top-row-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-end;
   gap: 6px;
+}
+
+/* Keep the header focused on the one form currently being edited. */
+.dashboard-top-row-actions:has(.my-account-form) .create-user-container > .icon-button,
+.dashboard-top-row-actions:has(.create-user-form) .my-account-container > .icon-button {
+  display: none;
 }
 
 /* ---- My account (dashboard header) ---- */
@@ -605,11 +650,8 @@ button {
 .my-account-link {
   border: none;
   background: none;
-  padding: 4px 0;
-  font-size: 13px;
   color: #2563eb;
   cursor: pointer;
-  text-decoration: underline;
 }
 
 .my-account-form {
@@ -639,13 +681,11 @@ button {
 /* ---- Create user (dashboard header) ---- */
 
 .create-user-button {
-  border: 1px dashed #ccc;
+  border: none;
   border-radius: 8px;
   background: none;
-  padding: 6px 10px;
   cursor: pointer;
   color: #374151;
-  font-size: 13px;
 }
 
 .create-user-inline {
