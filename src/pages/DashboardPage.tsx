@@ -8,6 +8,7 @@ import { getTrip, listTrips } from "../services/trips";
 import { countWishesByShop, countWishesByCategory } from "../utils/wishCounts";
 import { getCurrentUserId } from "../utils/currentUser";
 import { normalizeSearchTerm, matchesSearchTerm } from "../utils/textSearch";
+import { sortProductsByName } from "../utils/sortProducts";
 import { useWishToggle } from "../hooks/useWishToggle";
 import { useProductEditing } from "../hooks/useProductEditing";
 import { Shop, Category, Wish, Product } from "../types/domain";
@@ -132,6 +133,12 @@ export default function DashboardPage() {
       matchesForCategory.push(product);
       result.set(product.categoryId, matchesForCategory);
     }
+
+    // Always alphabetical within each category.
+    for (const [categoryId, matches] of result) {
+      result.set(categoryId, sortProductsByName(matches));
+    }
+
     return result;
   }, [products, normalizedSearchTerm, isSearching]);
 

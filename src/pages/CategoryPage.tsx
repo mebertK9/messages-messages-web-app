@@ -6,6 +6,7 @@ import { useWishToggle } from "../hooks/useWishToggle";
 import { useProductEditing } from "../hooks/useProductEditing";
 import { getCurrentUserId } from "../utils/currentUser";
 import { normalizeSearchTerm, matchesSearchTerm } from "../utils/textSearch";
+import { sortProductsByName } from "../utils/sortProducts";
 import ProductWishRow from "./ProductWishRow";
 import ProductEditChips from "./ProductEditChips";
 import SearchField from "./SearchField";
@@ -63,9 +64,12 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
 
   const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
   const isSearching = normalizedSearchTerm.length > 0;
-  const visibleProducts = isSearching
+  const filteredProducts = isSearching
     ? products.filter((product) => matchesSearchTerm(product.name, normalizedSearchTerm))
     : products;
+  // Always alphabetical, regardless of load order or where a newly
+  // created product was inserted in state.
+  const visibleProducts = sortProductsByName(filteredProducts);
 
   async function handleCreateProduct(e: FormEvent) {
     e.preventDefault();
