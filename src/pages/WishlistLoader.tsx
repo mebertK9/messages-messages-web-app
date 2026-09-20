@@ -202,7 +202,7 @@ export default function WishlistLoader({
           📌
         </div>
 
-        <div className="wishlist-loader__heading">Hm, wie wär's mit...</div>
+        <div className="wishlist-loader__heading">Bring doch bitte mit...</div>
 
         <ul className="wishlist-loader__lines">
           {completedItems.map((item, index) => (
