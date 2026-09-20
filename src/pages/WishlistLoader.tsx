@@ -197,11 +197,11 @@ export default function WishlistLoader({
 
   return (
     <div className={`wishlist-loader ${className}`} role="status">
-      <div className="wishlist-loader__pin" aria-hidden="true">
-        📌
-      </div>
-
       <div className="wishlist-loader__paper">
+        <div className="wishlist-loader__pin" aria-hidden="true">
+          📌
+        </div>
+
         <div className="wishlist-loader__heading">Hm, wie wär's mit...</div>
 
         <ul className="wishlist-loader__lines">
