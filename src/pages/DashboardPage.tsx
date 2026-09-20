@@ -7,7 +7,10 @@ import { listAllProducts } from "../services/products";
 import { getTrip, listTrips } from "../services/trips";
 import { countWishesByShop, countWishesByCategory } from "../utils/wishCounts";
 import { getCurrentUserId } from "../utils/currentUser";
+import { normalizeSearchTerm, matchesSearchTerm } from "../utils/textSearch";
+import { sortProductsByName } from "../utils/sortProducts";
 import { useWishToggle } from "../hooks/useWishToggle";
+import { useProductEditing } from "../hooks/useProductEditing";
 import { Shop, Category, Wish, Product } from "../types/domain";
 import { ShoppingTripDetail } from "../types/trip";
 import CategoryPage from "./CategoryPage";
@@ -18,6 +21,8 @@ import CreateUserForm from "./CreateUserForm";
 import MyAccountForm from "./MyAccountForm";
 import WishlistLoader from "./WishlistLoader";
 import ProductWishRow from "./ProductWishRow";
+import ProductEditChips from "./ProductEditChips";
+import SearchField from "./SearchField";
 
 type View =
   | { type: "home" }
@@ -50,6 +55,8 @@ export default function DashboardPage() {
     currentUserId,
     setError
   );
+  const { editingProductId, toggleEditing, handleAssignShop, handleAssignCategory } =
+    useProductEditing(setProducts, setError);
 
   async function loadDashboardData() {
     const [shopsResult, categoriesResult, wishesResult, productsResult, activeTrips] =
@@ -110,8 +117,10 @@ export default function DashboardPage() {
   // matches both "Brot" and "Toastbrot". Grouped by category id so matching
   // categories can show their hits and non-matching categories can be
   // hidden entirely (see categoriesWithMatches below). No result-count
-  // threshold: as soon as there is a search term, matches are shown.
-  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  // threshold: as soon as there is a search term, matches are shown. This
+  // recomputes from the current `products` state, so if a product's
+  // category is reassigned via the edit chips below, it regroups live.
+  const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
   const isSearching = normalizedSearchTerm.length > 0;
 
   const matchingProductsByCategory = useMemo(() => {
@@ -119,11 +128,17 @@ export default function DashboardPage() {
     if (!isSearching) return result;
 
     for (const product of products) {
-      if (!product.name.toLowerCase().includes(normalizedSearchTerm)) continue;
+      if (!matchesSearchTerm(product.name, normalizedSearchTerm)) continue;
       const matchesForCategory = result.get(product.categoryId) ?? [];
       matchesForCategory.push(product);
       result.set(product.categoryId, matchesForCategory);
     }
+
+    // Always alphabetical within each category.
+    for (const [categoryId, matches] of result) {
+      result.set(categoryId, sortProductsByName(matches));
+    }
+
     return result;
   }, [products, normalizedSearchTerm, isSearching]);
 
@@ -210,13 +225,11 @@ export default function DashboardPage() {
       <section className="tile-grid">
         <h2 className="tile-grid-title">Wunsch aufschreiben</h2>
 
-        <input
-          type="text"
-          className="product-search-input"
-          placeholder="Produkt suchen..."
+        <SearchField
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          aria-label="Produkt suchen"
+          onChange={setSearchTerm}
+          placeholder="Produkt suchen..."
+          ariaLabel="Produkt suchen"
         />
 
         {isSearching ? (
@@ -228,16 +241,41 @@ export default function DashboardPage() {
               <div key={category.id} className="product-search-category">
                 <h3 className="product-search-category-title">{category.name}</h3>
                 <div className="product-list">
-                  {(matchingProductsByCategory.get(category.id) ?? []).map((product) => (
-                    <ProductWishRow
-                      key={product.id}
-                      product={product}
-                      count={countFor(product.id)}
-                      hasOwnWish={!!ownWishFor(product.id)}
-                      onIncrement={() => handleIncrement(product.id)}
-                      onDecrement={() => handleDecrement(product.id)}
-                    />
-                  ))}
+                  {(matchingProductsByCategory.get(category.id) ?? []).map((product) => {
+                    const isEditing = editingProductId === product.id;
+                    return (
+                      <div key={product.id} className="product-entry">
+                        <ProductWishRow
+                          product={product}
+                          count={countFor(product.id)}
+                          hasOwnWish={!!ownWishFor(product.id)}
+                          onIncrement={() => handleIncrement(product.id)}
+                          onDecrement={() => handleDecrement(product.id)}
+                          trailingAction={
+                            <button
+                              className="edit-product-button"
+                              title="Standard-Markt / Bereich ändern"
+                              onClick={() => toggleEditing(product.id)}
+                            >
+                              ✎
+                            </button>
+                          }
+                        />
+
+                        {isEditing && (
+                          <ProductEditChips
+                            product={product}
+                            shops={shops}
+                            categories={categories}
+                            onAssignShop={(shopId) => handleAssignShop(product, shopId)}
+                            onAssignCategory={(categoryId) =>
+                              handleAssignCategory(product, categoryId)
+                            }
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}

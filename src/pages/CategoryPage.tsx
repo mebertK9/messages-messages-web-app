@@ -1,15 +1,15 @@
 import { FormEvent, useEffect, useState } from "react";
-import {
-  listProductsByCategory,
-  createProduct,
-  updateProductShop,
-  updateProductCategory
-} from "../services/products";
+import { listProductsByCategory, createProduct } from "../services/products";
 import { listOpenWishes } from "../services/wishes";
 import { Category, Product, Shop, Wish } from "../types/domain";
 import { useWishToggle } from "../hooks/useWishToggle";
+import { useProductEditing } from "../hooks/useProductEditing";
 import { getCurrentUserId } from "../utils/currentUser";
+import { normalizeSearchTerm, matchesSearchTerm } from "../utils/textSearch";
+import { sortProductsByName } from "../utils/sortProducts";
 import ProductWishRow from "./ProductWishRow";
+import ProductEditChips from "./ProductEditChips";
+import SearchField from "./SearchField";
 
 interface Props {
   category: Category;
@@ -28,10 +28,10 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
   const [newProductName, setNewProductName] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // Id of the product whose master-data edit row (shop + category chips) is
-  // currently open - only one at a time, and it closes itself immediately
-  // after a chip is clicked (see handleAssignShop/handleAssignCategory).
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  // Live in-category search, filtering the already-loaded products list -
+  // same semantics as the dashboard's search (case-insensitive substring,
+  // live on every keystroke, no result-count threshold).
+  const [searchTerm, setSearchTerm] = useState("");
 
   const currentUserId = getCurrentUserId();
   const { countFor, ownWishFor, handleIncrement, handleDecrement } = useWishToggle(
@@ -40,6 +40,8 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
     currentUserId,
     setError
   );
+  const { editingProductId, toggleEditing, handleAssignShop, handleAssignCategory } =
+    useProductEditing(setProducts, setError);
 
   useEffect(() => {
     async function load() {
@@ -59,6 +61,15 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
 
     load();
   }, [category.id]);
+
+  const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
+  const isSearching = normalizedSearchTerm.length > 0;
+  const filteredProducts = isSearching
+    ? products.filter((product) => matchesSearchTerm(product.name, normalizedSearchTerm))
+    : products;
+  // Always alphabetical, regardless of load order or where a newly
+  // created product was inserted in state.
+  const visibleProducts = sortProductsByName(filteredProducts);
 
   async function handleCreateProduct(e: FormEvent) {
     e.preventDefault();
@@ -80,31 +91,6 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
     }
   }
 
-  async function handleAssignShop(product: Product, shopId: string) {
-    // Save and close immediately - no separate confirm step.
-    setEditingProductId(null);
-    try {
-      const updated = await updateProductShop(product.id, shopId);
-      setProducts((current) => current.map((p) => (p.id === updated.id ? updated : p)));
-    } catch {
-      setError("Standard-Markt konnte nicht geändert werden");
-    }
-  }
-
-  async function handleAssignCategory(product: Product, categoryId: string) {
-    setEditingProductId(null);
-    try {
-      const updated = await updateProductCategory(product.id, categoryId);
-      // The product may now belong to a different category than this page
-      // is showing, but it's left in the list as-is for this session - it
-      // will simply not appear here anymore the next time this category is
-      // opened fresh.
-      setProducts((current) => current.map((p) => (p.id === updated.id ? updated : p)));
-    } catch {
-      setError("Bereich konnte nicht geändert werden");
-    }
-  }
-
   return (
     <div className="container">
       <div className="card category-card">
@@ -117,66 +103,22 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
 
         {error && <div className="error">{error}</div>}
 
+        {!loading && (
+          <SearchField
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Artikel suchen..."
+            ariaLabel="Artikel suchen"
+          />
+        )}
+
         {loading ? (
           <p>Lädt...</p>
         ) : (
           <div className="product-list">
-            {products.map((product) => {
-              const isEditing = editingProductId === product.id;
-              return (
-                <div key={product.id} className="product-entry">
-                  <ProductWishRow
-                    product={product}
-                    count={countFor(product.id)}
-                    hasOwnWish={!!ownWishFor(product.id)}
-                    onIncrement={() => handleIncrement(product.id)}
-                    onDecrement={() => handleDecrement(product.id)}
-                    trailingAction={
-                      <button
-                        className="edit-product-button"
-                        title="Standard-Markt / Bereich ändern"
-                        onClick={() =>
-                          setEditingProductId(isEditing ? null : product.id)
-                        }
-                      >
-                        ✎
-                      </button>
-                    }
-                  />
-
-                  {isEditing && (
-                    <div className="product-edit-row">
-                      <div className="product-edit-chips">
-                        {shops.map((shop) => (
-                          <button
-                            key={shop.id}
-                            className={`chip${
-                              product.preferredShopId === shop.id ? " chip-active" : ""
-                            }`}
-                            onClick={() => handleAssignShop(product, shop.id)}
-                          >
-                            {shop.name.slice(0, 4).toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="product-edit-chips">
-                        {categories.map((cat) => (
-                          <button
-                            key={cat.id}
-                            className={`chip${
-                              product.categoryId === cat.id ? " chip-active" : ""
-                            }`}
-                            onClick={() => handleAssignCategory(product, cat.id)}
-                          >
-                            {cat.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {isSearching && visibleProducts.length === 0 && (
+              <p className="product-search-empty">Keine Treffer</p>
+            )}
 
             {addingNew ? (
               <form className="new-product-form" onSubmit={handleCreateProduct}>
@@ -200,6 +142,43 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
                 + Neuer Artikel
               </button>
             )}
+
+            {visibleProducts.map((product) => {
+              const isEditing = editingProductId === product.id;
+              return (
+                <div key={product.id} className="product-entry">
+                  <ProductWishRow
+                    product={product}
+                    count={countFor(product.id)}
+                    hasOwnWish={!!ownWishFor(product.id)}
+                    onIncrement={() => handleIncrement(product.id)}
+                    onDecrement={() => handleDecrement(product.id)}
+                    trailingAction={
+                      <button
+                        className="edit-product-button"
+                        title="Standard-Markt / Bereich ändern"
+                        onClick={() => toggleEditing(product.id)}
+                      >
+                        ✎
+                      </button>
+                    }
+                  />
+
+                  {isEditing && (
+                    <ProductEditChips
+                      product={product}
+                      shops={shops}
+                      categories={categories}
+                      onAssignShop={(shopId) => handleAssignShop(product, shopId)}
+                      onAssignCategory={(categoryId) =>
+                        handleAssignCategory(product, categoryId)
+                      }
+                    />
+                  )}
+                </div>
+              );
+            })}
+
           </div>
         )}
       </div>
