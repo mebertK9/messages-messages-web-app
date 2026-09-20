@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Heart } from "lucide-react";
 import { listShops } from "../services/shops";
 import { listCategories } from "../services/categories";
@@ -6,6 +6,8 @@ import { listOpenWishes } from "../services/wishes";
 import { listAllProducts } from "../services/products";
 import { getTrip, listTrips } from "../services/trips";
 import { countWishesByShop, countWishesByCategory } from "../utils/wishCounts";
+import { getCurrentUserId } from "../utils/currentUser";
+import { useWishToggle } from "../hooks/useWishToggle";
 import { Shop, Category, Wish, Product } from "../types/domain";
 import { ShoppingTripDetail } from "../types/trip";
 import CategoryPage from "./CategoryPage";
@@ -15,6 +17,7 @@ import ActiveTripPage from "./ActiveTripPage";
 import CreateUserForm from "./CreateUserForm";
 import MyAccountForm from "./MyAccountForm";
 import WishlistLoader from "./WishlistLoader";
+import ProductWishRow from "./ProductWishRow";
 
 type View =
   | { type: "home" }
@@ -35,6 +38,18 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [view, setView] = useState<View>({ type: "home" });
+
+  // Live product search for the "Wunsch aufschreiben" section - filters on
+  // every keystroke, no submit step. See matchingProductsByCategory below.
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const currentUserId = getCurrentUserId();
+  const { countFor, ownWishFor, handleIncrement, handleDecrement } = useWishToggle(
+    openWishes,
+    setOpenWishes,
+    currentUserId,
+    setError
+  );
 
   async function loadDashboardData() {
     const [shopsResult, categoriesResult, wishesResult, productsResult, activeTrips] =
@@ -90,6 +105,31 @@ export default function DashboardPage() {
 
     setView({ type: "staging", shop });
   }
+
+  // Case-insensitive substring match, live on every keystroke - e.g. "bro"
+  // matches both "Brot" and "Toastbrot". Grouped by category id so matching
+  // categories can show their hits and non-matching categories can be
+  // hidden entirely (see categoriesWithMatches below). No result-count
+  // threshold: as soon as there is a search term, matches are shown.
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const isSearching = normalizedSearchTerm.length > 0;
+
+  const matchingProductsByCategory = useMemo(() => {
+    const result = new Map<string, Product[]>();
+    if (!isSearching) return result;
+
+    for (const product of products) {
+      if (!product.name.toLowerCase().includes(normalizedSearchTerm)) continue;
+      const matchesForCategory = result.get(product.categoryId) ?? [];
+      matchesForCategory.push(product);
+      result.set(product.categoryId, matchesForCategory);
+    }
+    return result;
+  }, [products, normalizedSearchTerm, isSearching]);
+
+  const categoriesWithMatches = isSearching
+    ? categories.filter((category) => matchingProductsByCategory.has(category.id))
+    : [];
 
   if (view.type === "wishlist") {
     return <WishlistPage shops={shops} onBack={goHome} onStartShopTrip={startShopTrip} />;
@@ -169,21 +209,56 @@ export default function DashboardPage() {
 
       <section className="tile-grid">
         <h2 className="tile-grid-title">Wunsch aufschreiben</h2>
-        <div className="tile-grid-squares">
-          {categories.slice(0, 4).map((category) => {
-            const count = categoryWishCounts.get(category.id) ?? 0;
-            return (
-              <button
-                key={category.id}
-                className="tile"
-                onClick={() => setView({ type: "category", category })}
-              >
-                {category.name}
-                {count > 0 && <span className="tile-badge">{count}</span>}
-              </button>
-            );
-          })}
-        </div>
+
+        <input
+          type="text"
+          className="product-search-input"
+          placeholder="Produkt suchen..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          aria-label="Produkt suchen"
+        />
+
+        {isSearching ? (
+          <div className="product-search-results">
+            {categoriesWithMatches.length === 0 && (
+              <p className="product-search-empty">Keine Treffer</p>
+            )}
+            {categoriesWithMatches.map((category) => (
+              <div key={category.id} className="product-search-category">
+                <h3 className="product-search-category-title">{category.name}</h3>
+                <div className="product-list">
+                  {(matchingProductsByCategory.get(category.id) ?? []).map((product) => (
+                    <ProductWishRow
+                      key={product.id}
+                      product={product}
+                      count={countFor(product.id)}
+                      hasOwnWish={!!ownWishFor(product.id)}
+                      onIncrement={() => handleIncrement(product.id)}
+                      onDecrement={() => handleDecrement(product.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="tile-grid-squares">
+            {categories.slice(0, 4).map((category) => {
+              const count = categoryWishCounts.get(category.id) ?? 0;
+              return (
+                <button
+                  key={category.id}
+                  className="tile"
+                  onClick={() => setView({ type: "category", category })}
+                >
+                  {category.name}
+                  {count > 0 && <span className="tile-badge">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="tile-grid">

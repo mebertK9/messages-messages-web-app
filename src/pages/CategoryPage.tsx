@@ -5,8 +5,11 @@ import {
   updateProductShop,
   updateProductCategory
 } from "../services/products";
-import { createWish, retractWish, listOpenWishes } from "../services/wishes";
+import { listOpenWishes } from "../services/wishes";
 import { Category, Product, Shop, Wish } from "../types/domain";
+import { useWishToggle } from "../hooks/useWishToggle";
+import { getCurrentUserId } from "../utils/currentUser";
+import ProductWishRow from "./ProductWishRow";
 
 interface Props {
   category: Category;
@@ -30,11 +33,13 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
   // after a chip is clicked (see handleAssignShop/handleAssignCategory).
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
-  // Set on login (see LoginPage); used to tell "my" wishes apart from the
-  // household's, since only the creator of a wish may retract it.
-  const currentUserId = JSON.parse(
-    localStorage.getItem("currentUser") ?? "{}"
-  ).id as string | undefined;
+  const currentUserId = getCurrentUserId();
+  const { countFor, ownWishFor, handleIncrement, handleDecrement } = useWishToggle(
+    openWishes,
+    setOpenWishes,
+    currentUserId,
+    setError
+  );
 
   useEffect(() => {
     async function load() {
@@ -55,39 +60,6 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
     load();
   }, [category.id]);
 
-  function countFor(productId: string): number {
-    return openWishes.filter((wish) => wish.productId === productId).length;
-  }
-
-  function ownWishFor(productId: string): Wish | undefined {
-    return openWishes.find(
-      (wish) => wish.productId === productId && wish.createdById === currentUserId
-    );
-  }
-
-  async function handleIncrement(product: Product) {
-    try {
-      const wish = await createWish(product.id);
-      setOpenWishes((current) => [...current, wish]);
-    } catch {
-      setError("Wunsch konnte nicht angelegt werden");
-    }
-  }
-
-  async function handleDecrement(product: Product) {
-    const wishToRetract = ownWishFor(product.id);
-    if (!wishToRetract) return;
-
-    try {
-      await retractWish(wishToRetract.id);
-      setOpenWishes((current) =>
-        current.filter((wish) => wish.id !== wishToRetract.id)
-      );
-    } catch {
-      setError("Wunsch konnte nicht zurückgezogen werden");
-    }
-  }
-
   async function handleCreateProduct(e: FormEvent) {
     e.preventDefault();
     if (!newProductName.trim()) return;
@@ -96,8 +68,9 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
     try {
       const product = await createProduct(newProductName.trim(), category.id);
       setProducts((current) => [product, ...current]);
-      const wish = await createWish(product.id);
-      setOpenWishes((current) => [...current, wish]);
+      // Errors from the wish itself are reported by useWishToggle's own
+      // onError, distinctly from a failure to create the product.
+      await handleIncrement(product.id);
       setNewProductName("");
       setAddingNew(false);
     } catch {
@@ -149,31 +122,16 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
         ) : (
           <div className="product-list">
             {products.map((product) => {
-              const count = countFor(product.id);
-              const hasOwnWish = !!ownWishFor(product.id);
               const isEditing = editingProductId === product.id;
               return (
                 <div key={product.id} className="product-entry">
-                  <div className="product-item">
-                    <span>{product.name}</span>
-                    <span className="product-controls">
-                      {hasOwnWish && (
-                        <button
-                          className="qty-button"
-                          onClick={() => handleDecrement(product)}
-                        >
-                          −
-                        </button>
-                      )}
-                      {count > 0 && (
-                        <span className="qty-count">({count}×)</span>
-                      )}
-                      <button
-                        className="qty-button"
-                        onClick={() => handleIncrement(product)}
-                      >
-                        +
-                      </button>
+                  <ProductWishRow
+                    product={product}
+                    count={countFor(product.id)}
+                    hasOwnWish={!!ownWishFor(product.id)}
+                    onIncrement={() => handleIncrement(product.id)}
+                    onDecrement={() => handleDecrement(product.id)}
+                    trailingAction={
                       <button
                         className="edit-product-button"
                         title="Standard-Markt / Bereich ändern"
@@ -183,8 +141,8 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
                       >
                         ✎
                       </button>
-                    </span>
-                  </div>
+                    }
+                  />
 
                   {isEditing && (
                     <div className="product-edit-row">
