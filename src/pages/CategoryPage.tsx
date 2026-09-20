@@ -120,6 +120,29 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
               <p className="product-search-empty">Keine Treffer</p>
             )}
 
+            {addingNew ? (
+              <form className="new-product-form" onSubmit={handleCreateProduct}>
+                <input
+                  type="text"
+                  placeholder="Neuer Artikel"
+                  value={newProductName}
+                  onChange={(e) => setNewProductName(e.target.value)}
+                  autoFocus
+                  required
+                />
+                <button type="submit" disabled={creating}>
+                  {creating ? "..." : "Anlegen"}
+                </button>
+              </form>
+            ) : (
+              <button
+                className="add-product-button"
+                onClick={() => setAddingNew(true)}
+              >
+                + Neuer Artikel
+              </button>
+            )}
+
             {visibleProducts.map((product) => {
               const isEditing = editingProductId === product.id;
               return (
@@ -156,28 +179,6 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
               );
             })}
 
-            {addingNew ? (
-              <form className="new-product-form" onSubmit={handleCreateProduct}>
-                <input
-                  type="text"
-                  placeholder="Neuer Artikel"
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  autoFocus
-                  required
-                />
-                <button type="submit" disabled={creating}>
-                  {creating ? "..." : "Anlegen"}
-                </button>
-              </form>
-            ) : (
-              <button
-                className="add-product-button"
-                onClick={() => setAddingNew(true)}
-              >
-                + Neuer Artikel
-              </button>
-            )}
           </div>
         )}
       </div>
