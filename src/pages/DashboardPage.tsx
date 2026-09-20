@@ -7,6 +7,7 @@ import { listAllProducts } from "../services/products";
 import { getTrip, listTrips } from "../services/trips";
 import { countWishesByShop, countWishesByCategory } from "../utils/wishCounts";
 import { getCurrentUserId } from "../utils/currentUser";
+import { normalizeSearchTerm, matchesSearchTerm } from "../utils/textSearch";
 import { useWishToggle } from "../hooks/useWishToggle";
 import { Shop, Category, Wish, Product } from "../types/domain";
 import { ShoppingTripDetail } from "../types/trip";
@@ -111,7 +112,7 @@ export default function DashboardPage() {
   // categories can show their hits and non-matching categories can be
   // hidden entirely (see categoriesWithMatches below). No result-count
   // threshold: as soon as there is a search term, matches are shown.
-  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
   const isSearching = normalizedSearchTerm.length > 0;
 
   const matchingProductsByCategory = useMemo(() => {
@@ -119,7 +120,7 @@ export default function DashboardPage() {
     if (!isSearching) return result;
 
     for (const product of products) {
-      if (!product.name.toLowerCase().includes(normalizedSearchTerm)) continue;
+      if (!matchesSearchTerm(product.name, normalizedSearchTerm)) continue;
       const matchesForCategory = result.get(product.categoryId) ?? [];
       matchesForCategory.push(product);
       result.set(product.categoryId, matchesForCategory);

@@ -9,6 +9,7 @@ import { listOpenWishes } from "../services/wishes";
 import { Category, Product, Shop, Wish } from "../types/domain";
 import { useWishToggle } from "../hooks/useWishToggle";
 import { getCurrentUserId } from "../utils/currentUser";
+import { normalizeSearchTerm, matchesSearchTerm } from "../utils/textSearch";
 import ProductWishRow from "./ProductWishRow";
 
 interface Props {
@@ -32,6 +33,11 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
   // currently open - only one at a time, and it closes itself immediately
   // after a chip is clicked (see handleAssignShop/handleAssignCategory).
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+
+  // Live in-category search, filtering the already-loaded products list -
+  // same semantics as the dashboard's search (case-insensitive substring,
+  // live on every keystroke, no result-count threshold).
+  const [searchTerm, setSearchTerm] = useState("");
 
   const currentUserId = getCurrentUserId();
   const { countFor, ownWishFor, handleIncrement, handleDecrement } = useWishToggle(
@@ -59,6 +65,12 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
 
     load();
   }, [category.id]);
+
+  const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
+  const isSearching = normalizedSearchTerm.length > 0;
+  const visibleProducts = isSearching
+    ? products.filter((product) => matchesSearchTerm(product.name, normalizedSearchTerm))
+    : products;
 
   async function handleCreateProduct(e: FormEvent) {
     e.preventDefault();
@@ -117,11 +129,26 @@ export default function CategoryPage({ category, shops, categories, onBack }: Pr
 
         {error && <div className="error">{error}</div>}
 
+        {!loading && (
+          <input
+            type="text"
+            className="product-search-input"
+            placeholder="Artikel suchen..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Artikel suchen"
+          />
+        )}
+
         {loading ? (
           <p>Lädt...</p>
         ) : (
           <div className="product-list">
-            {products.map((product) => {
+            {isSearching && visibleProducts.length === 0 && (
+              <p className="product-search-empty">Keine Treffer</p>
+            )}
+
+            {visibleProducts.map((product) => {
               const isEditing = editingProductId === product.id;
               return (
                 <div key={product.id} className="product-entry">
