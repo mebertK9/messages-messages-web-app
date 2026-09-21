@@ -44,7 +44,7 @@ export default function LoginPage({ onLogin }: Props) {
         return (
                 <div className="container">
                         <form className="card" onSubmit={handleSubmit}>
-                                <h1>Household Wishlist</h1>
+                                <h1>Mein Wunsch - Dein Kauf</h1>
 
                                 <input
                                         type="text"
