@@ -1,0 +1,873 @@
+openapi: 3.0.0
+info:
+  title: Household Wishlist & Shopping Trip API
+  description: API for managing wishlists, shopping trips, and household members
+  version: 1.0.0
+  contact:
+    name: Support
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: http://localhost:3000/v1
+    description: Development server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token for authenticated requests
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - name
+        - password
+      properties:
+        name:
+          type: string
+          description: User name/username
+        password:
+          type: string
+          format: password
+          description: User password
+
+    LoginResponse:
+      type: object
+      required:
+        - accessToken
+        - user
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token for subsequent requests
+        user:
+          type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Unique user identifier
+            name:
+              type: string
+              description: User name
+            email:
+              type: string
+              format: email
+              nullable: true
+              description: User email address
+
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - password
+      properties:
+        name:
+          type: string
+          description: Name for the new household member
+        password:
+          type: string
+          format: password
+          description: Password for the new household member
+        email:
+          type: string
+          format: email
+          nullable: true
+          description: Optional email address
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          nullable: true
+          description: New email address
+        currentPassword:
+          type: string
+          format: password
+          description: Required to verify identity when changing password
+        newPassword:
+          type: string
+          format: password
+          description: New password
+
+    UserProfile:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+
+    Shop:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique shop identifier
+        name:
+          type: string
+          description: Name of the shop
+
+    Category:
+      type: object
+      required:
+        - id
+        - name
+        - sortOrder
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique category identifier
+        name:
+          type: string
+          description: Category name
+        sortOrder:
+          type: integer
+          description: Display order for the category
+
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - categoryId
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique product identifier
+        name:
+          type: string
+          description: Product name
+        categoryId:
+          type: string
+          format: uuid
+          description: ID of the category this product belongs to
+        preferredShopId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Preferred shop for purchasing this product
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - categoryId
+      properties:
+        name:
+          type: string
+          description: Name of the product
+        categoryId:
+          type: string
+          format: uuid
+          description: ID of the category
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        preferredShopId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Update the preferred shop
+        categoryId:
+          type: string
+          format: uuid
+          description: Move product to another category
+
+    WishStatus:
+      type: string
+      enum:
+        - open
+        - onTrip
+        - purchased
+        - cancelled
+      description: Status of a wish
+
+    Wish:
+      type: object
+      required:
+        - id
+        - productId
+        - createdById
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique wish identifier
+        productId:
+          type: string
+          format: uuid
+          description: ID of the wished product
+        createdById:
+          type: string
+          format: uuid
+          description: ID of the user who created this wish
+        assignedTripStopId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the trip stop this wish is assigned to (if on a trip)
+        status:
+          $ref: '#/components/schemas/WishStatus'
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the wish was created
+
+    CreateWishRequest:
+      type: object
+      required:
+        - productId
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: ID of the product to wish for
+
+    TripStatus:
+      type: string
+      enum:
+        - active
+        - done
+      description: Status of a shopping trip
+
+    StopStatus:
+      type: string
+      enum:
+        - active
+        - done
+      description: Status of a trip stop
+
+    TripStop:
+      type: object
+      required:
+        - id
+        - tripId
+        - shopId
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique trip stop identifier
+        tripId:
+          type: string
+          format: uuid
+          description: ID of the parent trip
+        shopId:
+          type: string
+          format: uuid
+          description: ID of the shop for this stop
+        status:
+          $ref: '#/components/schemas/StopStatus'
+
+    TripStopWithWishes:
+      allOf:
+        - $ref: '#/components/schemas/TripStop'
+        - type: object
+          properties:
+            wishes:
+              type: array
+              items:
+                $ref: '#/components/schemas/Wish'
+              description: Wishes assigned to this stop
+
+    ShoppingTrip:
+      type: object
+      required:
+        - id
+        - startedById
+        - status
+        - startedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique trip identifier
+        startedById:
+          type: string
+          format: uuid
+          description: ID of the user who started this trip
+        status:
+          $ref: '#/components/schemas/TripStatus'
+        startedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the trip started
+
+    ShoppingTripDetail:
+      allOf:
+        - $ref: '#/components/schemas/ShoppingTrip'
+        - type: object
+          required:
+            - stops
+          properties:
+            stops:
+              type: array
+              items:
+                $ref: '#/components/schemas/TripStopWithWishes'
+              description: All stops in this trip with their assigned wishes
+
+    CreateTripStopRequest:
+      type: object
+      required:
+        - shopId
+        - wishIds
+      properties:
+        shopId:
+          type: string
+          format: uuid
+          description: ID of the shop for this stop
+        wishIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: IDs of wishes to assign to this stop
+
+    CreateTripRequest:
+      type: object
+      required:
+        - stops
+      properties:
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateTripStopRequest'
+          minItems: 1
+          description: List of stops to create for this trip
+
+    CompleteTripStopRequest:
+      type: object
+      required:
+        - notFoundWishIds
+      properties:
+        notFoundWishIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: IDs of wishes that were not found at the shop (returned to open status)
+
+    NotificationType:
+      type: string
+      enum:
+        - wishOnTrip
+        - wishRetracted
+        - wishNotFound
+        - wishAddedToActiveTrip
+      description: Type of notification event
+
+    Notification:
+      type: object
+      required:
+        - id
+        - wishId
+        - recipientId
+        - type
+        - read
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique notification identifier
+        wishId:
+          type: string
+          format: uuid
+          description: ID of the related wish
+        recipientId:
+          type: string
+          format: uuid
+          description: ID of the user receiving this notification
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        read:
+          type: boolean
+          description: Whether the notification has been read
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the notification was created
+
+    Error:
+      type: object
+      required:
+        - message
+        - status
+      properties:
+        message:
+          type: string
+          description: Error message
+        status:
+          type: integer
+          description: HTTP status code
+
+  responses:
+    UnauthorizedError:
+      description: Unauthorized - missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    BadRequestError:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login with credentials
+      description: Authenticates a user and returns an access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new household member
+      description: Creates a new user account within a household. The new user is logged in automatically.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created and logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /users/me:
+    patch:
+      tags:
+        - Users
+      summary: Update current user profile
+      description: Updates the email or password of the authenticated user
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /shops:
+    get:
+      tags:
+        - Shops
+      summary: List all shops
+      description: Retrieves a list of all available shops
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of shops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Shop'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: List all product categories
+      description: Retrieves all product categories sorted by sortOrder
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /products:
+    get:
+      tags:
+        - Products
+      summary: List products
+      description: List all products or filter by category
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: categoryId
+          in: query
+          description: Filter products by category ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags:
+        - Products
+      summary: Create a new product
+      description: Creates a new product in the specified category
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /products/{productId}:
+    patch:
+      tags:
+        - Products
+      summary: Update a product
+      description: Updates the preferred shop or category of a product
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /wishes:
+    get:
+      tags:
+        - Wishes
+      summary: List wishes
+      description: List wishes filtered by status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter wishes by status
+          required: false
+          schema:
+            $ref: '#/components/schemas/WishStatus'
+      responses:
+        '200':
+          description: List of wishes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Wish'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags:
+        - Wishes
+      summary: Create a new wish
+      description: Creates a new wish for a product
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWishRequest'
+      responses:
+        '201':
+          description: Wish created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wish'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /wishes/{wishId}:
+    delete:
+      tags:
+        - Wishes
+      summary: Retract a wish
+      description: Removes/retracts a wish (cancels it)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: wishId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Wish retracted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /trips:
+    post:
+      tags:
+        - Shopping Trips
+      summary: Create a new shopping trip
+      description: Creates a new shopping trip with the specified stops and wishes
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTripRequest'
+      responses:
+        '201':
+          description: Trip created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingTripDetail'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    get:
+      tags:
+        - Shopping Trips
+      summary: List shopping trips
+      description: Lists all shopping trips, optionally filtered by status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter trips by status
+          required: false
+          schema:
+            $ref: '#/components/schemas/TripStatus'
+      responses:
+        '200':
+          description: List of trips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShoppingTrip'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /trips/{tripId}:
+    get:
+      tags:
+        - Shopping Trips
+      summary: Get trip details
+      description: Retrieves full details of a trip including all stops and their assigned wishes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tripId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Trip details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingTripDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /trips/{tripId}/stops/{stopId}/complete:
+    post:
+      tags:
+        - Shopping Trips
+      summary: Complete a trip stop
+      description: Marks wishes as purchased or not found, completes the stop, and possibly the entire trip
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tripId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: stopId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteTripStopRequest'
+      responses:
+        '200':
+          description: Stop completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripStop'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: List notifications
+      description: Retrieves all notifications for the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+security:
+  - BearerAuth: []
